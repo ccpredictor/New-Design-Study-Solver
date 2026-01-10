@@ -1,0 +1,7 @@
+{
+  "name": "AI Study Solver",
+  "description": "An advanced AI-powered academic assistant that solves problems step-by-step with deep conceptual explanations.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

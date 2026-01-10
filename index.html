@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <!-- Primary Meta Tags -->
+    <title>AI Study Solver - Master Any Subject with Advanced AI</title>
+    <meta name="title" content="AI Study Solver - Advanced AI Academic Assistant">
+    <meta name="description" content="Master Math, Physics, Chemistry, and more with AI Study Solver. Get step-by-step Socratic solutions, generate mock exam papers, and create personalized study roadmaps in English, Hindi, and Gujarati.">
+    <meta name="keywords" content="AI Study Assistant, Math Solver, Physics Solver, Exam Paper Generator, Study Planner, Socratic Learning, Gemini AI, Hindi AI Teacher, Gujarati AI Teacher">
+    <meta name="author" content="AI Study Solver Team">
+    <meta name="theme-color" content="#5E17EB">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://ai-study-solver.web.app/">
+    <meta property="og:title" content="AI Study Solver - Advanced AI Academic Assistant">
+    <meta property="og:description" content="Stop memorizing, start mastering. Get logical, step-by-step solutions to any academic problem using the power of Gemini 3.0.">
+    <meta property="og:image" content="https://ai-study-solver.web.app/og-image.png">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://ai-study-solver.web.app/">
+    <meta property="twitter:title" content="AI Study Solver - Advanced AI Academic Assistant">
+    <meta property="twitter:description" content="Stop memorizing, start mastering. Get logical, step-by-step solutions to any academic problem using the power of Gemini 3.0.">
+    <meta property="twitter:image" content="https://ai-study-solver.web.app/og-image.png">
+
+    <!-- Robots -->
+    <meta name="robots" content="index, follow">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="language" content="English">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      // Initialize theme - Default to dark
+      if (localStorage.theme === 'light') {
+        document.documentElement.classList.remove('dark');
+      } else {
+        document.documentElement.classList.add('dark');
+        localStorage.theme = 'dark';
+      }
+
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              charcoal: {
+                800: '#262626',
+                900: '#171717',
+                950: '#0a0a0a',
+              },
+              indigo: {
+                50: '#f0f0ff',
+                100: '#e0e0ff',
+                200: '#c0c0ff',
+                300: '#9090ff',
+                400: '#7070ff',
+                500: '#5E17EB',
+                600: '#4b12bd',
+                700: '#3a0e94',
+                800: '#2c0b70',
+                900: '#1f084d',
+              },
+            }
+          }
+        }
+      }
+    </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Kalam:wght@300;400;700&family=Caveat:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+      body { 
+        font-family: 'Inter', sans-serif; 
+        transition: background-color 0.5s ease; 
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        overflow-x: hidden;
+        width: 100vw;
+      }
+      #root {
+        width: 100%;
+        overflow-x: hidden;
+      }
+      .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+      .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+      .custom-scrollbar::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
+      .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #444; }
+      .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #555; }
+      
+      /* Smooth transitions */
+      * { transition: background-color 0.3s ease, border-color 0.3s ease; }
+      
+      /* Prose custom overrides for KaTeX */
+      .katex-display {
+        margin: 2rem 0;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding: 0.5rem 0;
+        max-width: 100%;
+      }
+      .dark .katex { color: #0047ab; }
+      
+      /* Fix for mobile text overflow */
+      p, span, div {
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+      }
+
+      /* Notebook Styling with fixed Vertical Rhythm */
+      .notebook-paper {
+        background-color: #fdf6e3;
+        background-image: 
+          linear-gradient(90deg, transparent 79px, #f4aab9 79px, #f4aab9 81px, transparent 81px),
+          linear-gradient(#d1d9e0 1px, transparent 1px);
+        background-size: 100% 2.2rem; /* Adjusted for Indic script height */
+        line-height: 2.2rem;
+        padding-top: 4.4rem !important; /* Start text exactly on 3rd line */
+        background-attachment: local;
+      }
+      
+      .handwritten {
+        font-family: 'Kalam', cursive;
+        color: #0047ab; /* Classic Blue Ink */
+      }
+      
+      /* Force all content inside notebook to align with the background grid */
+      .notebook-content p, 
+      .notebook-content li, 
+      .notebook-content h1, 
+      .notebook-content h2, 
+      .notebook-content h3 {
+        margin: 0 !important;
+        padding: 0 !important;
+        line-height: 2.2rem !important; /* Must match background-size height */
+        min-height: 2.2rem;
+        display: block;
+        vertical-align: baseline;
+      }
+
+      /* Spacing between paragraphs must be a multiple of line-height */
+      .notebook-content p, 
+      .notebook-content ul {
+        margin-bottom: 2.2rem !important;
+      }
+
+      .notebook-content li {
+        list-style-position: inside;
+      }
+      
+      .notebook-content strong {
+        line-height: inherit;
+      }
+
+      .notebook-content img {
+        margin: 1.1rem 0;
+      }
+
+      /* Specific fix for Gujarati/Hindi letters that sit high */
+      .handwritten {
+        padding-top: 0.2rem; /* Small nudge down to center on line */
+      }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "@google/genai": "https://esm.sh/@google/genai@^1.34.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "react-markdown": "https://esm.sh/react-markdown@^10.1.0",
+    "remark-math": "https://esm.sh/remark-math@^6.0.0",
+    "rehype-katex": "https://esm.sh/rehype-katex@^7.0.1",
+    "firebase/": "https://esm.sh/firebase@^12.7.0/"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body class="bg-white dark:bg-charcoal-900 text-slate-900 dark:text-slate-100 h-screen overflow-hidden">
+    <div id="root" class="h-full"></div>
+<script type="module" src="/index.tsx"></script>
+</body>
+</html>
