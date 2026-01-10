@@ -4,7 +4,7 @@ import { Message, Role } from "../types";
 
 const getSystemInstruction = (grade?: string, complexity: 'EASY' | 'HARD' = 'HARD') => {
   const baseIdentity = `You are "AI Study Solver", a helpful and intelligent AI Teacher.`;
-  
+
   const languageRule = `LANGUAGE RULE: Always respond in the SAME LANGUAGE that the user uses. If they ask in Gujarati, reply in Gujarati. If they ask in Hindi, reply in Hindi.`;
 
   if (complexity === 'EASY') {
@@ -46,7 +46,7 @@ ONLY output 'EASY' or 'HARD'.
 `;
 
 const classifyPrompt = async (prompt: string): Promise<'EASY' | 'HARD'> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = new GoogleGenAI({ apiKey: "AIzaSyCmElfrqVK_T47X7XDs8MyChxcVU7UnhkU" });
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
@@ -64,13 +64,13 @@ const classifyPrompt = async (prompt: string): Promise<'EASY' | 'HARD'> => {
 };
 
 export const solveProblem = async (
-  prompt: string, 
-  history: Message[], 
+  prompt: string,
+  history: Message[],
   image?: string,
   grade?: string
 ): Promise<{ text: string, sources?: any[], tokensUsed: number, metadata?: any }> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  
+  const ai = new GoogleGenAI({ apiKey: "AIzaSyCmElfrqVK_T47X7XDs8MyChxcVU7UnhkU" });
+
   let complexity: 'EASY' | 'HARD' = 'HARD';
   let selectedModel = 'gemini-3-pro-preview';
   let routerTriggered = false;
@@ -114,7 +114,7 @@ export const solveProblem = async (
   const sources = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
   const usage = (response as any).usageMetadata || {};
 
-  return { 
+  return {
     text: response.text || "I'm sorry, I couldn't generate a solution.",
     sources: sources,
     tokensUsed: usage.totalTokenCount || 0,
@@ -127,7 +127,7 @@ export const solveProblem = async (
 };
 
 export const generateGlobalReport = async (data: string): Promise<string> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = new GoogleGenAI({ apiKey: "AIzaSyCmElfrqVK_T47X7XDs8MyChxcVU7UnhkU" });
   const prompt = `As a Senior Administrator, analyze this data and generate a report in Markdown:\n${data}`;
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
@@ -145,9 +145,9 @@ export const generateExamPaper = async (params: {
   includeAnswers: boolean,
   pdfData?: string
 }): Promise<string> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = new GoogleGenAI({ apiKey: "AIzaSyCmElfrqVK_T47X7XDs8MyChxcVU7UnhkU" });
   const prompt = `Design an exam paper in ${params.language} for Grade ${params.grade}, Subject: ${params.subject}, Topic: ${params.topic}, Total Marks: ${params.marks}. ${params.includeAnswers ? "Include Answer Key." : ""}`;
-  
+
   const userParts: any[] = [{ text: prompt }];
   if (params.pdfData) {
     userParts.push({ inlineData: { data: params.pdfData.split(',')[1], mimeType: 'application/pdf' } });
@@ -157,9 +157,9 @@ export const generateExamPaper = async (params: {
   const response = await ai.models.generateContent({
     model: 'gemini-3-pro-preview',
     contents: { parts: userParts },
-    config: { 
+    config: {
       maxOutputTokens: 4000,
-      thinkingConfig: { thinkingBudget: 2000 } 
+      thinkingConfig: { thinkingBudget: 2000 }
     }
   });
   return response.text || "Failed.";
@@ -171,7 +171,7 @@ export const generateStudyPlanner = async (params: {
   targetGrade: string,
   dailyHours: string
 }): Promise<string> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = new GoogleGenAI({ apiKey: "AIzaSyCmElfrqVK_T47X7XDs8MyChxcVU7UnhkU" });
   const prompt = `Plan study roadmap. Exam: ${params.examDate}, Subjects: ${params.subjects}, Target: ${params.targetGrade}, Hours: ${params.dailyHours}.`;
   const response = await ai.models.generateContent({
     model: 'gemini-3-pro-preview',
@@ -181,7 +181,7 @@ export const generateStudyPlanner = async (params: {
 };
 
 export const analyzeLearningInsights = async (history: string): Promise<string> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = new GoogleGenAI({ apiKey: "AIzaSyCmElfrqVK_T47X7XDs8MyChxcVU7UnhkU" });
   const prompt = `Summarize history patterns: ${history}. Format: STRENGTHS: ... | WEAKNESSES: ...`;
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
