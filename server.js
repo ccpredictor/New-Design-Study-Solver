@@ -24,7 +24,7 @@ if (!fs.existsSync(DIST_DIR)) {
 app.use(express.static(DIST_DIR));
 
 // Handle SPA routing: serve index.html for all non-static requests
-app.get('*', (req, res) => {
+app.get(/.*/, (req, res) => {
     res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
