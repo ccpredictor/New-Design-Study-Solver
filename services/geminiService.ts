@@ -143,14 +143,20 @@ export const generateExamPaper = async (params: {
   marks: string,
   language: string,
   includeAnswers: boolean,
-  pdfData?: string
+  pdfData?: string,
+  mimeType?: string
 }): Promise<string> => {
   const ai = new GoogleGenAI({ apiKey: "AIzaSyCmElfrqVK_T47X7XDs8MyChxcVU7UnhkU" });
   const prompt = `Design an exam paper in ${params.language} for Grade ${params.grade}, Subject: ${params.subject}, Topic: ${params.topic}, Total Marks: ${params.marks}. ${params.includeAnswers ? "Include Answer Key." : ""}`;
 
   const userParts: any[] = [{ text: prompt }];
   if (params.pdfData) {
-    userParts.push({ inlineData: { data: params.pdfData.split(',')[1], mimeType: 'application/pdf' } });
+    userParts.push({
+      inlineData: {
+        data: params.pdfData.split(',')[1],
+        mimeType: params.mimeType || 'application/pdf'
+      }
+    });
   }
 
   // Use both maxOutputTokens and thinkingBudget as per Gemini API guidelines for reserved token space
