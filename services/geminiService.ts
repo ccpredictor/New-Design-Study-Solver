@@ -46,7 +46,7 @@ ONLY output 'EASY' or 'HARD'.
 `;
 
 const classifyPrompt = async (prompt: string): Promise<'EASY' | 'HARD'> => {
-  const ai = new GoogleGenAI({ apiKey: "AIzaSyCmElfrqVK_T47X7XDs8MyChxcVU7UnhkU" });
+  const ai = new GoogleGenAI({ apiKey: "AIzaSyA9dAbexqi02_U8R8yZHHvcS2EmsPKQexI" });
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
@@ -69,7 +69,7 @@ export const solveProblem = async (
   image?: string,
   grade?: string
 ): Promise<{ text: string, sources?: any[], tokensUsed: number, metadata?: any }> => {
-  const ai = new GoogleGenAI({ apiKey: "AIzaSyCmElfrqVK_T47X7XDs8MyChxcVU7UnhkU" });
+  const ai = new GoogleGenAI({ apiKey: "AIzaSyA9dAbexqi02_U8R8yZHHvcS2EmsPKQexI" });
 
   let complexity: 'EASY' | 'HARD' = 'HARD';
   let selectedModel = 'gemini-3-pro-preview';
@@ -127,7 +127,7 @@ export const solveProblem = async (
 };
 
 export const generateGlobalReport = async (data: string): Promise<string> => {
-  const ai = new GoogleGenAI({ apiKey: "AIzaSyCmElfrqVK_T47X7XDs8MyChxcVU7UnhkU" });
+  const ai = new GoogleGenAI({ apiKey: "AIzaSyA9dAbexqi02_U8R8yZHHvcS2EmsPKQexI" });
   const prompt = `As a Senior Administrator, analyze this data and generate a report in Markdown:\n${data}`;
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
@@ -146,7 +146,7 @@ export const generateExamPaper = async (params: {
   pdfData?: string,
   mimeType?: string
 }): Promise<string> => {
-  const ai = new GoogleGenAI({ apiKey: "AIzaSyCmElfrqVK_T47X7XDs8MyChxcVU7UnhkU" });
+  const ai = new GoogleGenAI({ apiKey: "AIzaSyA9dAbexqi02_U8R8yZHHvcS2EmsPKQexI" });
   const prompt = `Design an exam paper in ${params.language} for Grade ${params.grade}, Subject: ${params.subject}, Topic: ${params.topic}, Total Marks: ${params.marks}. ${params.includeAnswers ? "Include Answer Key." : ""}`;
 
   const userParts: any[] = [{ text: prompt }];
@@ -177,7 +177,7 @@ export const generateStudyPlanner = async (params: {
   targetGrade: string,
   dailyHours: string
 }): Promise<string> => {
-  const ai = new GoogleGenAI({ apiKey: "AIzaSyCmElfrqVK_T47X7XDs8MyChxcVU7UnhkU" });
+  const ai = new GoogleGenAI({ apiKey: "AIzaSyA9dAbexqi02_U8R8yZHHvcS2EmsPKQexI" });
   const prompt = `Plan study roadmap. Exam: ${params.examDate}, Subjects: ${params.subjects}, Target: ${params.targetGrade}, Hours: ${params.dailyHours}.`;
   const response = await ai.models.generateContent({
     model: 'gemini-3-pro-preview',
@@ -187,7 +187,7 @@ export const generateStudyPlanner = async (params: {
 };
 
 export const analyzeLearningInsights = async (history: string): Promise<string> => {
-  const ai = new GoogleGenAI({ apiKey: "AIzaSyCmElfrqVK_T47X7XDs8MyChxcVU7UnhkU" });
+  const ai = new GoogleGenAI({ apiKey: "AIzaSyA9dAbexqi02_U8R8yZHHvcS2EmsPKQexI" });
   const prompt = `Summarize history patterns: ${history}. Format: STRENGTHS: ... | WEAKNESSES: ...`;
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
