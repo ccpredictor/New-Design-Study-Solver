@@ -12,6 +12,7 @@ export interface StudentProfile {
     question_hesitation_level: number;
     tone_preference: 'FRIENDLY' | 'STRICT_BUT_KIND' | 'VERY_SIMPLE';
     grade: string;
+    name: string;
     subjects_of_interest: string[];
     goals?: string;
     created_at: string;
@@ -46,6 +47,7 @@ SCHEMA:
   "question_hesitation_level": 0-100,
   "tone_preference": "FRIENDLY" | "STRICT_BUT_KIND" | "VERY_SIMPLE",
   "grade": string,
+  "name": string,
   "subjects_of_interest": string[],
   "goals": string,
   "profile_evidence": string[] (max 3 items, no PII)
@@ -69,6 +71,10 @@ RULES:
    - DETAILED: Use headings and deep explanations.
 4. Tone: Match ${profile.tone_preference}.
 5. Constraints: Text-only. No voice/video.
+6. Personal Awareness: You are the student's personal mentor. You KNOW their name ("${profile.name || 'Student'}") and grade ("${profile.grade || 'Unknown'}") from the STUDENT PROFILE. If they ask "Who am I?" or "What standard am I in?", answer correctly using this data.
+7. Identity: Start your first response of a session with a personalized greeting. Example: "Jai Shree Krishna ${profile.name || ''}! How can I help you today?".
+8. Language Preference: All responses must respect the student's language preference. If it's GUJARATI, use Gujarati for the greeting as well.
+9. Avoid Generic Help: Never say "I don't know your grade" or "I don't know your name" if the data is present in the profile. If name is missing, simply omit it and address them as "Student".
 `;
 
 const PROFILE_UPDATER_PROMPT = (profile: StudentProfile, summary: string) => `
@@ -86,6 +92,14 @@ RULES:
 Example Output: {"confidence_level": 85, "profile_evidence": ["Showed strong grasp of quadratic formula."]}
 `;
 
+const ONBOARDING_HELPLINE_PROMPT = `
+You are an AI Assistant helping a student complete their onboarding for an AI Study Solver app.
+Your goal is to explain what each question means and WHY we are asking it.
+Use a friendly, encouraging tone. Keep answers concise.
+If they ask something unrelated to onboarding, politely guide them back to the form.
+Language: Preferred Gujarati/Hindi/English mix as appropriate for the user.
+`;
+
 export const TeacherAssistantService = {
     /**
      * Check if profile exists
@@ -99,7 +113,7 @@ export const TeacherAssistantService = {
     /**
      * Analyze onboarding responses and save profile
      */
-    async completeOnboarding(uid: string, answers: { q: string, a: string }[]) {
+    async completeOnboarding(uid: string, answers: { q: string, a: string }[], explicitData: { name: string, grade: string }) {
         // 1. Analyze with Gemini
         const result = await genAI.models.generateContent({
             model: "gemini-3-flash-preview",
@@ -109,9 +123,11 @@ export const TeacherAssistantService = {
         const profileData = extractJson(result.text || "{}");
         if (!profileData) throw new Error("Could not parse learning profile.");
 
-        // 2. Validate and Save
+        // 2. Validate and Save (Prioritize explicit data for critical fields)
         const profile: StudentProfile = {
             ...profileData,
+            name: explicitData.name || profileData.name || "Student",
+            grade: explicitData.grade || profileData.grade || "Unknown",
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
             version: 1
@@ -184,5 +200,19 @@ export const TeacherAssistantService = {
                 session_id: sessionId
             });
         }
+    },
+
+    /**
+     * Get help during onboarding
+     */
+    async getOnboardingHelp(questionContext: string, userQuery: string) {
+        const result = await genAI.models.generateContent({
+            model: "gemini-3-flash-preview",
+            contents: [
+                { role: 'user', parts: [{ text: ONBOARDING_HELPLINE_PROMPT }] },
+                { role: 'user', parts: [{ text: `CONTEXT: The student is looking at this part of the form: "${questionContext}"\nSTUDENT QUESTION: ${userQuery}` }] }
+            ]
+        });
+        return result.text || "";
     }
 };

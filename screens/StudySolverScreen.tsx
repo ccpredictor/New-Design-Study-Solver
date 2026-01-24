@@ -15,7 +15,7 @@ import StudyPlannerScreen from './StudyPlannerScreen';
 import AdminPanelScreen from './AdminPanelScreen';
 import DashboardScreen from './DashboardScreen';
 import CustomModal from '../components/CustomModal';
-import OnboardingChat from '../components/OnboardingChat';
+import OnboardingForm from '../components/OnboardingForm';
 import { TeacherAssistantService, StudentProfile } from '../services/teacherAssistantService';
 
 interface ChatSession {
@@ -635,7 +635,7 @@ const StudySolverScreen: React.FC = () => {
   }
 
   if (showOnboarding && user) {
-    return <OnboardingChat uid={user.uid} onComplete={(profile) => { setStudentProfile(profile); setShowOnboarding(false); }} />;
+    return <OnboardingForm uid={user.uid} onComplete={(profile) => { setStudentProfile(profile); setShowOnboarding(false); }} />;
   }
 
   return (
