@@ -14,7 +14,10 @@ export interface StudentProfile {
     grade: string;
     name: string;
     subjects_of_interest: string[];
-    goals?: string;
+    difficulty_type?: 'MEMORY' | 'UNDERSTANDING' | 'QUESTION_FORMULATION' | 'PRACTICE';
+    stuck_strategy?: 'RE_READ' | 'ASK' | 'SKIP' | 'SEARCH';
+    most_helpful_format?: 'ANALOGIES' | 'QA' | 'SUMMARY' | 'RE_EXPLAIN';
+    ai_primary_goal?: 'RE_EXPLAIN' | 'SIMPLIFY' | 'DOUBT_CLEAR' | 'HOMEWORK';
     created_at: string;
     updated_at: string;
     version: number;
@@ -43,13 +46,13 @@ SCHEMA:
 {
   "preferred_explanation_style": "EXAMPLE" | "STEP_BY_STEP" | "SHORT" | "DETAILED",
   "language_preference": "GUJARATI" | "HINDI" | "ENGLISH" | "MIX",
-  "confidence_level": 0-100,
-  "question_hesitation_level": 0-100,
-  "tone_preference": "FRIENDLY" | "STRICT_BUT_KIND" | "VERY_SIMPLE",
   "grade": string,
   "name": string,
   "subjects_of_interest": string[],
-  "goals": string,
+  "difficulty_type": "MEMORY" | "UNDERSTANDING" | "QUESTION_FORMULATION" | "PRACTICE",
+  "stuck_strategy": "RE_READ" | "ASK" | "SKIP" | "SEARCH",
+  "most_helpful_format": "ANALOGIES" | "QA" | "SUMMARY" | "RE_EXPLAIN",
+  "ai_primary_goal": "RE_EXPLAIN" | "SIMPLIFY" | "DOUBT_CLEAR" | "HOMEWORK",
   "profile_evidence": string[] (max 3 items, no PII)
 }
 
@@ -125,6 +128,12 @@ export const TeacherAssistantService = {
 
         // 2. Validate and Save (Prioritize explicit data for critical fields)
         const profile: StudentProfile = {
+            preferred_explanation_style: profileData.preferred_explanation_style || 'STEP_BY_STEP',
+            language_preference: profileData.language_preference || 'GUJARATI',
+            tone_preference: profileData.tone_preference || 'FRIENDLY',
+            subjects_of_interest: profileData.subjects_of_interest || [],
+            confidence_level: 70, // Default if not asked
+            question_hesitation_level: 30, // Default if not asked
             ...profileData,
             name: explicitData.name || profileData.name || "Student",
             grade: explicitData.grade || profileData.grade || "Unknown",
