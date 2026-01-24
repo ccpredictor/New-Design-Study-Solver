@@ -5,33 +5,52 @@ interface ChatInputProps {
   setInputText: (val: string) => void;
   selectedImage: string | null;
   setSelectedImage: (val: string | null) => void;
+  selectedDoc: { name: string, text: string } | null;
+  setSelectedDoc: (val: { name: string, text: string } | null) => void;
   onSendMessage: () => void;
   isLoading: boolean;
 }
 
-const ChatInput: React.FC<ChatInputProps> = ({ 
-  inputText, 
-  setInputText, 
-  selectedImage, 
-  setSelectedImage, 
+const ChatInput: React.FC<ChatInputProps> = ({
+  inputText,
+  setInputText,
+  selectedImage,
+  setSelectedImage,
+  selectedDoc,
+  setSelectedDoc,
   onSendMessage,
-  isLoading 
+  isLoading
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
 
-  const processFile = (file: File) => {
-    if (file && file.type.startsWith('image/')) {
+  const processFile = async (file: File) => {
+    if (file.type.startsWith('image/')) {
       const reader = new FileReader();
       reader.onloadend = () => {
         setSelectedImage(reader.result as string);
+        setSelectedDoc(null);
       };
       reader.readAsDataURL(file);
+    } else if (file.type === 'application/pdf' || file.type === 'text/plain') {
+      const text = await extractText(file);
+      setSelectedDoc({ name: file.name, text });
+      setSelectedImage(null);
     }
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const extractText = async (file: File): Promise<string> => {
+    if (file.type === 'text/plain') {
+      return await file.text();
+    }
+    if (file.type === 'application/pdf') {
+      return "[PDF Content: Text extraction pending library integration]";
+    }
+    return "";
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) processFile(file);
   };
@@ -55,13 +74,13 @@ const ChatInput: React.FC<ChatInputProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isLoading && (inputText.trim() || selectedImage)) {
+    if (!isLoading && (inputText.trim() || selectedImage || selectedDoc)) {
       onSendMessage();
     }
   };
 
   return (
-    <div 
+    <div
       className={`w-full px-3 py-1 md:py-4 transition-all duration-300 ${isDragging ? 'bg-indigo-500/5 scale-[0.99]' : 'bg-transparent'}`}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -72,7 +91,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
         {selectedImage && (
           <div className="absolute -top-20 left-2 z-30 animate-in fade-in slide-in-from-bottom-4 duration-300">
             <div className="relative group">
-              <button 
+              <button
                 onClick={() => setSelectedImage(null)}
                 className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1.5 shadow-xl hover:scale-110 active:scale-90 transition-all z-40 border-2 border-white dark:border-charcoal-900"
               >
@@ -84,14 +103,31 @@ const ChatInput: React.FC<ChatInputProps> = ({
             </div>
           </div>
         )}
-        
+
+        {/* Doc Preview Overlay */}
+        {selectedDoc && (
+          <div className="absolute -top-20 left-2 z-30 animate-in fade-in slide-in-from-bottom-4 duration-300">
+            <div className="relative group">
+              <button
+                onClick={() => setSelectedDoc(null)}
+                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1.5 shadow-xl hover:scale-110 active:scale-90 transition-all z-40 border-2 border-white dark:border-charcoal-900"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+              <div className="rounded-xl overflow-hidden border-2 border-indigo-500 shadow-2xl bg-white dark:bg-charcoal-800 p-3 flex items-center space-x-2">
+                <svg className="w-6 h-6 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                <span className="text-[10px] font-bold text-slate-700 dark:text-slate-200 truncate max-w-[150px]">{selectedDoc.name}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="relative">
           <div className={`flex items-end bg-white dark:bg-charcoal-800 rounded-[24px] md:rounded-[36px] p-1 md:p-2 shadow-2xl border transition-all duration-500 ${isDragging ? 'border-indigo-500 ring-8 ring-indigo-500/10' : 'border-slate-100 dark:border-white/5 shadow-indigo-500/5'} focus-within:border-indigo-400/50`}>
-            
+
             {/* Multi-modal Action Group */}
             <div className="flex items-center space-x-0.5 mb-0.5 ml-0.5">
-              {/* Camera Button */}
-              <button 
+              <button
                 type="button"
                 onClick={() => cameraInputRef.current?.click()}
                 className="p-2 md:p-3 text-slate-400 hover:text-indigo-500 dark:hover:text-indigo-400 transition-all rounded-full hover:bg-indigo-50 dark:hover:bg-indigo-500/10 active:scale-90"
@@ -103,12 +139,11 @@ const ChatInput: React.FC<ChatInputProps> = ({
                 </svg>
               </button>
 
-              {/* Gallery Button */}
-              <button 
+              <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 className="p-2 md:p-3 text-slate-400 hover:text-indigo-500 dark:hover:text-indigo-400 transition-all rounded-full hover:bg-indigo-50 dark:hover:bg-indigo-500/10 active:scale-90"
-                title="Upload from Gallery"
+                title="Upload"
               >
                 <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -129,10 +164,10 @@ const ChatInput: React.FC<ChatInputProps> = ({
               className="flex-1 bg-transparent border-none outline-none focus:ring-0 py-2.5 px-2 md:px-3 text-[14px] md:text-[16px] text-slate-700 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 resize-none min-h-[40px] max-h-40 font-medium custom-scrollbar"
               rows={1}
             />
-            
+
             <button
               type="submit"
-              disabled={isLoading || (!inputText.trim() && !selectedImage)}
+              disabled={isLoading || (!inputText.trim() && !selectedImage && !selectedDoc)}
               className="mb-0.5 mr-0.5 w-10 h-10 md:w-12 md:h-12 rounded-[18px] md:rounded-[24px] bg-indigo-500 hover:bg-indigo-600 active:scale-95 disabled:bg-slate-100 dark:disabled:bg-charcoal-900 disabled:text-slate-300 dark:disabled:text-slate-700 text-white flex items-center justify-center transition-all shadow-xl shadow-indigo-500/20"
             >
               {isLoading ? (
@@ -143,10 +178,9 @@ const ChatInput: React.FC<ChatInputProps> = ({
                 </svg>
               )}
             </button>
-            
-            {/* Hidden Input Nodes */}
-            <input type="file" ref={fileInputRef} onChange={handleImageUpload} className="hidden" accept="image/*" />
-            <input type="file" ref={cameraInputRef} onChange={handleImageUpload} className="hidden" accept="image/*" capture="environment" />
+
+            <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept="image/*,application/pdf,text/plain" />
+            <input type="file" ref={cameraInputRef} onChange={handleFileUpload} className="hidden" accept="image/*" capture="environment" />
           </div>
         </form>
       </div>

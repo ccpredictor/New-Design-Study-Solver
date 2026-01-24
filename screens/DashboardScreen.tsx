@@ -1,5 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { analyzeLearningInsights } from '../services/geminiService';
 import { auth } from '../services/firebase';
 
@@ -45,7 +45,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ stats, sessions, onSe
   return (
     <div className="flex-1 overflow-y-auto custom-scrollbar bg-[#f8fafc] dark:bg-charcoal-950 p-6 md:p-10">
       <div className="max-w-6xl mx-auto space-y-10">
-        
+
         {/* Welcome Header */}
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
@@ -82,16 +82,16 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ stats, sessions, onSe
                     <div className="h-2 bg-white/20 rounded-full w-48"></div>
                   </div>
                 ) : (
-                  <p className="text-sm md:text-base font-medium leading-relaxed text-indigo-50">
-                    {insights}
-                  </p>
+                  <div className="prose prose-invert max-w-none prose-sm md:prose-base prose-p:leading-relaxed prose-headings:font-black prose-headings:uppercase prose-headings:tracking-widest prose-li:font-medium text-indigo-50">
+                    <ReactMarkdown>{insights}</ReactMarkdown>
+                  </div>
                 )}
               </div>
             </div>
             <div className="hidden lg:block">
               <div className="w-full aspect-square bg-white/5 border border-white/10 rounded-[48px] flex items-center justify-center relative group">
                 <div className="absolute inset-0 flex items-center justify-center opacity-20 group-hover:opacity-40 transition-opacity">
-                   <svg className="w-32 h-32" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
+                  <svg className="w-32 h-32" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
                 </div>
                 <div className="text-center space-y-2">
                   <p className="text-4xl font-black">{stats.problemsSolved > 10 ? 'A+' : 'B'}</p>
@@ -104,65 +104,65 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ stats, sessions, onSe
 
         {/* Quick Actions Grid */}
         <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <ActionCard 
-            icon="📐" 
-            title="Smart Solver" 
-            desc="Solve a new problem now" 
-            color="indigo" 
+          <ActionCard
+            icon="📐"
+            title="Smart Solver"
+            desc="Solve a new problem now"
+            color="indigo"
             onClick={() => onAction('workflow')}
           />
-          <ActionCard 
-            icon="📝" 
-            title="Exam Lab" 
-            desc="Generate mock papers" 
-            color="emerald" 
+          <ActionCard
+            icon="📝"
+            title="Exam Lab"
+            desc="Generate mock papers"
+            color="emerald"
             onClick={() => onAction('designer')}
           />
-          <ActionCard 
-            icon="📅" 
-            title="Roadmap" 
-            desc="View your study plan" 
-            color="amber" 
+          <ActionCard
+            icon="📅"
+            title="Roadmap"
+            desc="View your study plan"
+            color="amber"
             onClick={() => onAction('planner')}
           />
         </section>
 
         {/* Stats & Activity Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-          
+
           {/* Stats Breakdown */}
           <div className="bg-white dark:bg-charcoal-900 border border-slate-100 dark:border-white/5 rounded-[40px] p-8 space-y-8">
             <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest ml-1">Performance Matrix</h3>
             <div className="grid grid-cols-2 gap-6">
-               <div className="space-y-1">
-                  <div className="text-3xl font-black text-slate-900 dark:text-white">{stats.problemsSolved}</div>
-                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Solved Concepts</div>
-               </div>
-               <div className="space-y-1">
-                  <div className="text-3xl font-black text-emerald-500">100%</div>
-                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Accuracy Rate</div>
-               </div>
-               <div className="space-y-1">
-                  <div className="text-3xl font-black text-amber-500">3 Days</div>
-                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Study Streak</div>
-               </div>
-               <div className="space-y-1">
-                  <div className="text-3xl font-black text-indigo-500">Top 5%</div>
-                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Global Rank</div>
-               </div>
+              <div className="space-y-1">
+                <div className="text-3xl font-black text-slate-900 dark:text-white">{stats.problemsSolved}</div>
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Solved Concepts</div>
+              </div>
+              <div className="space-y-1">
+                <div className="text-3xl font-black text-emerald-500">100%</div>
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Accuracy Rate</div>
+              </div>
+              <div className="space-y-1">
+                <div className="text-3xl font-black text-amber-500">3 Days</div>
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Study Streak</div>
+              </div>
+              <div className="space-y-1">
+                <div className="text-3xl font-black text-indigo-500">Top 5%</div>
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Global Rank</div>
+              </div>
             </div>
           </div>
 
           {/* Recent Lessons */}
           <div className="bg-white dark:bg-charcoal-900 border border-slate-100 dark:border-white/5 rounded-[40px] p-8 space-y-6">
             <div className="flex items-center justify-between px-1">
-               <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">Recent Lessons</h3>
-               <button onClick={() => onAction('workflow')} className="text-[10px] font-black text-indigo-500 uppercase tracking-widest hover:underline">View All</button>
+              <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">Recent Lessons</h3>
+              <button onClick={() => onAction('workflow')} className="text-[10px] font-black text-indigo-500 uppercase tracking-widest hover:underline">View All</button>
             </div>
             <div className="space-y-3">
               {sessions.length > 0 ? (
                 sessions.slice(0, 3).map(session => (
-                  <button 
+                  <button
                     key={session.id}
                     onClick={() => onSelectChat(session.id)}
                     className="w-full flex items-center justify-between p-4 bg-slate-50 dark:bg-charcoal-950 rounded-2xl hover:ring-2 hover:ring-indigo-500/20 transition-all text-left"
@@ -181,7 +181,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ stats, sessions, onSe
                 ))
               ) : (
                 <div className="text-center py-10">
-                   <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">No recent sessions found.</p>
+                  <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">No recent sessions found.</p>
                 </div>
               )}
             </div>
@@ -201,7 +201,7 @@ const ActionCard: React.FC<{ icon: string, title: string, desc: string, color: s
   };
 
   return (
-    <button 
+    <button
       onClick={onClick}
       className={`p-8 rounded-[40px] border flex flex-col items-center text-center transition-all hover:scale-[1.02] active:scale-[0.98] group ${colors[color]}`}
     >

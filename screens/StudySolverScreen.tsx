@@ -15,6 +15,8 @@ import StudyPlannerScreen from './StudyPlannerScreen';
 import AdminPanelScreen from './AdminPanelScreen';
 import DashboardScreen from './DashboardScreen';
 import CustomModal from '../components/CustomModal';
+import OnboardingChat from '../components/OnboardingChat';
+import { TeacherAssistantService, StudentProfile } from '../services/teacherAssistantService';
 
 interface ChatSession {
   id: string;
@@ -32,28 +34,33 @@ const StudySolverScreen: React.FC = () => {
     isLoading: false,
     error: null
   });
-  
+
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [channels, setChannels] = useState<Channel[]>([]);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
   const [activeChannelData, setActiveChannelData] = useState<Channel | null>(null);
   const [channelMembers, setChannelMembers] = useState<any[]>([]);
-  
+
   const [sharedOwnerId, setSharedOwnerId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'workflow' | 'review' | 'profile' | 'designer' | 'channels' | 'planner' | 'admin'>('dashboard');
   const [inputText, setInputText] = useState('');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedDoc, setSelectedDoc] = useState<{ name: string, text: string } | null>(null);
   const [userStats, setUserStats] = useState({ problemsSolved: 0 });
   const [userRole, setUserRole] = useState<UserRole>(UserRole.STUDENT);
   const [userGrade, setUserGrade] = useState<string | undefined>(undefined);
-  
+
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(false);
   const [modalInput, setModalInput] = useState('');
   const [modalLoading, setModalLoading] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
+
+  const [studentProfile, setStudentProfile] = useState<StudentProfile | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [onboardingLoading, setOnboardingLoading] = useState(true);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const user = auth.currentUser;
@@ -104,14 +111,14 @@ const StudySolverScreen: React.FC = () => {
     };
 
     const current = metaData[activeTab] || metaData['dashboard'];
-    
+
     // Update Title
     document.title = current.title;
-    
+
     // Update Description
     const descTag = document.querySelector('meta[name="description"]');
     if (descTag) descTag.setAttribute('content', current.desc);
-    
+
     // Update Keywords
     const keywordsTag = document.querySelector('meta[name="keywords"]');
     if (keywordsTag) keywordsTag.setAttribute('content', current.keywords);
@@ -134,6 +141,21 @@ const StudySolverScreen: React.FC = () => {
         setUserStats({ problemsSolved: data.stats?.problemsSolved || 0 });
       }
     });
+
+    // Check for Student Profile
+    const checkProfile = async () => {
+      setOnboardingLoading(true);
+      const profile = await TeacherAssistantService.getProfile(user.uid);
+      if (profile) {
+        setStudentProfile(profile);
+        setShowOnboarding(false);
+      } else {
+        setShowOnboarding(true);
+      }
+      setOnboardingLoading(false);
+    };
+    checkProfile();
+
     return () => unsubscribe();
   }, [user]);
 
@@ -218,7 +240,7 @@ const StudySolverScreen: React.FC = () => {
     const q = query(messagesRef, orderBy('timestamp', 'asc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const fetchedMessages: Message[] = snapshot.docs.map(doc => {
-        const data = doc.data();
+        const data = doc.data() as any;
         return {
           id: doc.id,
           role: data.role as Role,
@@ -327,10 +349,12 @@ const StudySolverScreen: React.FC = () => {
 
     const currentInput = inputText;
     const currentImg = selectedImage;
+    const currentDoc = selectedDoc;
     const historyForModel = [...chat.messages];
-    
+
     setInputText('');
     setSelectedImage(null);
+    setSelectedDoc(null);
 
     try {
       let targetMessagesRef;
@@ -379,7 +403,7 @@ const StudySolverScreen: React.FC = () => {
           limit(1)
         );
         const cacheSnap = await getDocs(cacheQuery);
-        
+
         if (!cacheSnap.empty) {
           const cachedDoc = cacheSnap.docs[0].data();
           responseText = cachedDoc.response;
@@ -391,13 +415,26 @@ const StudySolverScreen: React.FC = () => {
       }
 
       if (!isCached) {
-        const result = await solveProblem(currentInput, historyForModel, currentImg || undefined, userGrade);
+        let result;
+        if (studentProfile && !activeChannelId) {
+          // Use Teacher Assistant Logic (Profile-aware)
+          const aiResponse = await TeacherAssistantService.getTutoringResponse(
+            user.uid,
+            currentInput,
+            historyForModel,
+            currentDoc?.text
+          );
+          result = { text: aiResponse, tokensUsed: 0, sources: [], metadata: { modelUsed: 'gemini-1.5-pro', routerTriggered: false } };
+        } else {
+          result = await solveProblem(currentInput, historyForModel, currentImg || undefined, userGrade);
+        }
+
         responseText = result.text;
-        tokensUsed = result.tokensUsed;
+        tokensUsed = result.tokensUsed || 0;
         sources = result.sources || [];
         modelMetadata = result.metadata || {};
 
-        if (!currentImg) {
+        if (!currentImg && !studentProfile) { // Only cache regular queries
           try {
             await addDoc(collection(db, 'knowledge_base'), {
               prompt: currentInput.trim(),
@@ -422,13 +459,18 @@ const StudySolverScreen: React.FC = () => {
       });
 
       await updateDoc(updateMetadataRef, { updatedAt: serverTimestamp() });
-      
+
+      // If we have a profile and it's a private chat, check if session should end (simplified: after 10 messages)
+      if (studentProfile && !activeChannelId && chat.messages.length >= 10) {
+        await TeacherAssistantService.updateProfile(user.uid, activeChatId || "default", "Progressing through concepts.");
+      }
+
       const userUpdate: any = {
         'stats.problemsSolved': increment(1),
         'stats.tokensConsumed': increment(tokensUsed),
       };
-      
-      if (modelMetadata.modelUsed === 'gemini-3-pro-preview') {
+
+      if (modelMetadata.modelUsed === 'gemini-3-pro-preview' || modelMetadata.modelUsed === 'gemini-1.5-pro') {
         userUpdate['stats.proTokens'] = increment(tokensUsed);
       } else if (modelMetadata.modelUsed === 'gemini-3-flash-preview') {
         userUpdate['stats.flashTokens'] = increment(tokensUsed);
@@ -450,9 +492,9 @@ const StudySolverScreen: React.FC = () => {
       case 'planner': return <StudyPlannerScreen onBack={() => setActiveTab('dashboard')} />;
       case 'admin': return <AdminPanelScreen onBack={() => setActiveTab('dashboard')} />;
       case 'dashboard': return (
-        <DashboardScreen 
-          stats={userStats} 
-          sessions={sessions} 
+        <DashboardScreen
+          stats={userStats}
+          sessions={sessions}
           onSelectChat={(id) => { setActiveChatId(id); setActiveTab('workflow'); }}
           onAction={setActiveTab}
         />
@@ -461,8 +503,8 @@ const StudySolverScreen: React.FC = () => {
         <div className="flex-1 overflow-y-auto custom-scrollbar bg-[#f8fafc] dark:bg-charcoal-950 p-4 md:p-6 pb-24">
           <div className="max-w-2xl mx-auto space-y-6">
             <div className="flex items-center justify-between mb-4">
-               <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-[0.2em]">History</h2>
-               <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest bg-indigo-50 dark:bg-indigo-500/10 px-3 py-1 rounded-full">{sessions.length} Lessons</span>
+              <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-[0.2em]">History</h2>
+              <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest bg-indigo-50 dark:bg-indigo-500/10 px-3 py-1 rounded-full">{sessions.length} Lessons</span>
             </div>
             {sessions.length === 0 ? (
               <div className="text-center py-20 bg-white dark:bg-charcoal-900 rounded-[40px] border border-slate-100 dark:border-white/5">
@@ -493,11 +535,11 @@ const StudySolverScreen: React.FC = () => {
         <div className="flex-1 overflow-y-auto custom-scrollbar bg-[#f8fafc] dark:bg-charcoal-950 p-4 md:p-6 pb-24">
           <div className="max-w-2xl mx-auto space-y-6">
             <div className="flex items-center justify-between mb-4">
-               <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-[0.2em]">Groups</h2>
-               <div className="flex space-x-2">
-                 <button onClick={() => { setModalInput(''); setModalError(null); setShowJoinModal(true); }} className="px-4 py-2 bg-white dark:bg-charcoal-900 text-indigo-500 rounded-xl text-[10px] font-black uppercase tracking-widest border border-slate-100 dark:border-white/5">Join</button>
-                 <button onClick={() => { setModalInput(''); setModalError(null); setShowCreateModal(true); }} className="px-4 py-2 bg-indigo-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-indigo-500/20">Create</button>
-               </div>
+              <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-[0.2em]">Groups</h2>
+              <div className="flex space-x-2">
+                <button onClick={() => { setModalInput(''); setModalError(null); setShowJoinModal(true); }} className="px-4 py-2 bg-white dark:bg-charcoal-900 text-indigo-500 rounded-xl text-[10px] font-black uppercase tracking-widest border border-slate-100 dark:border-white/5">Join</button>
+                <button onClick={() => { setModalInput(''); setModalError(null); setShowCreateModal(true); }} className="px-4 py-2 bg-indigo-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-indigo-500/20">Create</button>
+              </div>
             </div>
             {channels.length === 0 ? (
               <div className="text-center py-20 bg-white dark:bg-charcoal-900 rounded-[40px] border border-slate-100 dark:border-white/5">
@@ -550,11 +592,28 @@ const StudySolverScreen: React.FC = () => {
               </div>
             </div>
             <div className="flex-shrink-0 border-t border-slate-50 dark:border-white/5 bg-white/80 dark:bg-charcoal-900/80 backdrop-blur-xl md:pb-0">
-              <ChatInput 
+              {studentProfile && !activeChannelId && activeChatId && (
+                <div className="px-4 py-2 flex justify-end">
+                  <button
+                    onClick={async () => {
+                      if (confirm("End this session and update your learning profile?")) {
+                        await TeacherAssistantService.updateProfile(user.uid, activeChatId, "Session ended by student.");
+                        alert("Profile updated with new insights!");
+                      }
+                    }}
+                    className="text-[10px] font-black text-indigo-500 hover:text-indigo-600 uppercase tracking-widest bg-indigo-50 dark:bg-indigo-500/10 px-4 py-2 rounded-full transition-all"
+                  >
+                    End Session & Update Profile
+                  </button>
+                </div>
+              )}
+              <ChatInput
                 inputText={inputText}
                 setInputText={setInputText}
                 selectedImage={selectedImage}
                 setSelectedImage={setSelectedImage}
+                selectedDoc={selectedDoc}
+                setSelectedDoc={setSelectedDoc}
                 onSendMessage={handleSendMessage}
                 isLoading={chat.isLoading}
               />
@@ -563,6 +622,21 @@ const StudySolverScreen: React.FC = () => {
         );
     }
   };
+
+  if (onboardingLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] dark:bg-charcoal-950">
+        <div className="flex flex-col items-center">
+          <div className="w-12 h-12 border-4 border-indigo-100 border-t-indigo-500 rounded-full animate-spin mb-4"></div>
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] animate-pulse">Syncing Profile</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (showOnboarding && user) {
+    return <OnboardingChat uid={user.uid} onComplete={(profile) => { setStudentProfile(profile); setShowOnboarding(false); }} />;
+  }
 
   return (
     <div className="flex flex-col h-screen h-[100dvh] bg-white dark:bg-charcoal-950 transition-colors overflow-hidden">

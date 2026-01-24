@@ -188,7 +188,15 @@ export const generateStudyPlanner = async (params: {
 
 export const analyzeLearningInsights = async (history: string): Promise<string> => {
   const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-  const prompt = `Summarize history patterns: ${history}. Format: STRENGTHS: ... | WEAKNESSES: ...`;
+  const prompt = `As an expert Education Analyst, summarize the learning patterns from this student's history: ${history}. 
+  
+  Format the response in clean Markdown:
+  - Use clear bullet points for STRENGTHS and WEAKNESSES.
+  - USE SINGLE BOLD ONLY for headers (e.g. **Title**).
+  - DO NOT use triple stars (***) or nested italics.
+  - Language: Mixed Hindi-English (Hinglish) with academic depth.
+  - Keep sentences short and professional.`;
+
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
     contents: prompt,
