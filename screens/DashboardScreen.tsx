@@ -12,28 +12,6 @@ interface DashboardScreenProps {
 
 const DashboardScreen: React.FC<DashboardScreenProps> = ({ stats, sessions, onSelectChat, onAction }) => {
   const user = auth.currentUser;
-  const [insights, setInsights] = useState<string>("Analyzing your learning patterns...");
-  const [loadingInsights, setLoadingInsights] = useState(true);
-
-  useEffect(() => {
-    const fetchInsights = async () => {
-      if (sessions.length === 0) {
-        setInsights("Start some lessons to get personalized AI learning insights!");
-        setLoadingInsights(false);
-        return;
-      }
-      try {
-        const historyText = sessions.slice(0, 5).map(s => s.title).join(", ");
-        const res = await analyzeLearningInsights(historyText);
-        setInsights(res);
-      } catch (e) {
-        setInsights("Unable to fetch insights at the moment.");
-      } finally {
-        setLoadingInsights(false);
-      }
-    };
-    fetchInsights();
-  }, [sessions]);
 
   const getTimeGreeting = () => {
     const hour = new Date().getHours();
@@ -65,42 +43,6 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ stats, sessions, onSe
           </div>
         </header>
 
-        {/* AI Insight Card */}
-        <section className="relative overflow-hidden bg-indigo-600 rounded-[40px] md:rounded-[56px] p-8 md:p-12 text-white shadow-2xl shadow-indigo-500/20">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 blur-[80px] rounded-full -mr-20 -mt-20"></div>
-          <div className="relative z-10 grid grid-cols-1 lg:grid-cols-3 gap-10 items-center">
-            <div className="lg:col-span-2 space-y-6">
-              <div className="inline-flex items-center space-x-2 px-4 py-1.5 bg-white/10 rounded-full border border-white/20 backdrop-blur-md">
-                <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></span>
-                <span className="text-[10px] font-black uppercase tracking-[0.2em]">AI Intelligence Report</span>
-              </div>
-              <h2 className="text-3xl md:text-5xl font-black leading-tight tracking-tighter">Your Cognitive <br />Analysis Summary.</h2>
-              <div className="bg-white/5 backdrop-blur-xl border border-white/10 p-6 rounded-3xl min-h-[100px]">
-                {loadingInsights ? (
-                  <div className="flex items-center space-x-3 animate-pulse">
-                    <div className="w-2 h-2 bg-white/40 rounded-full"></div>
-                    <div className="h-2 bg-white/20 rounded-full w-48"></div>
-                  </div>
-                ) : (
-                  <div className="prose prose-invert max-w-none prose-sm md:prose-base prose-p:leading-relaxed prose-headings:font-black prose-headings:uppercase prose-headings:tracking-widest prose-li:font-medium text-indigo-50">
-                    <ReactMarkdown>{insights}</ReactMarkdown>
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="hidden lg:block">
-              <div className="w-full aspect-square bg-white/5 border border-white/10 rounded-[48px] flex items-center justify-center relative group">
-                <div className="absolute inset-0 flex items-center justify-center opacity-20 group-hover:opacity-40 transition-opacity">
-                  <svg className="w-32 h-32" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
-                </div>
-                <div className="text-center space-y-2">
-                  <p className="text-4xl font-black">{stats.problemsSolved > 10 ? 'A+' : 'B'}</p>
-                  <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Academic Grade</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
 
         {/* Quick Actions Grid */}
         <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
