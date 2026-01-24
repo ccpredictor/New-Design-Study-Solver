@@ -118,7 +118,7 @@ export const TeacherAssistantService = {
     async completeOnboarding(uid: string, answers: { q: string, a: string }[], explicitData: { name: string, grade: string }) {
         // 1. Analyze with Gemini
         const result = await genAI.models.generateContent({
-            model: "gemini-1.5-pro",
+            model: "gemini-3-pro-preview",
             contents: [{ role: 'user', parts: [{ text: `${ONBOARDING_ANALYZER_PROMPT}\n\nSTUDENT RESPONSES:\n${JSON.stringify(answers)}` }] }],
             config: { responseMimeType: "application/json" }
         });
@@ -165,7 +165,7 @@ export const TeacherAssistantService = {
 
         // Call Gemini
         const result = await genAI.models.generateContent({
-            model: "gemini-1.5-pro",
+            model: "gemini-3-pro-preview",
             contents: [
                 { role: 'user', parts: [{ text: systemInstruction }] },
                 ...history.map(m => ({
@@ -187,7 +187,7 @@ export const TeacherAssistantService = {
         if (!profile) return;
 
         const result = await genAI.models.generateContent({
-            model: "gemini-1.5-pro",
+            model: "gemini-3-pro-preview",
             contents: [{ role: 'user', parts: [{ text: PROFILE_UPDATER_PROMPT(profile, summary) }] }],
             config: { responseMimeType: "application/json" }
         });
@@ -214,7 +214,7 @@ export const TeacherAssistantService = {
      */
     async getOnboardingHelp(questionContext: string, userQuery: string) {
         const result = await genAI.models.generateContent({
-            model: "gemini-1.5-pro",
+            model: "gemini-3-pro-preview",
             contents: [
                 { role: 'user', parts: [{ text: ONBOARDING_HELPLINE_PROMPT }] },
                 { role: 'user', parts: [{ text: `CONTEXT: The student is looking at this part of the form: "${questionContext}"\nSTUDENT QUESTION: ${userQuery}` }] }

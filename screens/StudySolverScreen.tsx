@@ -424,7 +424,7 @@ const StudySolverScreen: React.FC = () => {
             historyForModel,
             currentDoc?.text
           );
-          result = { text: aiResponse, tokensUsed: 0, sources: [], metadata: { modelUsed: 'gemini-1.5-pro', routerTriggered: false } };
+          result = { text: aiResponse, tokensUsed: 0, sources: [], metadata: { modelUsed: 'gemini-3-pro-preview', routerTriggered: false } };
         } else {
           result = await solveProblem(currentInput, historyForModel, currentImg || undefined, userGrade);
         }
@@ -470,7 +470,7 @@ const StudySolverScreen: React.FC = () => {
         'stats.tokensConsumed': increment(tokensUsed),
       };
 
-      if (modelMetadata.modelUsed === 'gemini-3-pro-preview' || modelMetadata.modelUsed === 'gemini-1.5-pro') {
+      if (modelMetadata.modelUsed === 'gemini-3-pro-preview' || modelMetadata.modelUsed === 'gemini-3-pro-preview') {
         userUpdate['stats.proTokens'] = increment(tokensUsed);
       } else if (modelMetadata.modelUsed === 'gemini-3-pro-preview') {
         userUpdate['stats.flashTokens'] = increment(tokensUsed);
