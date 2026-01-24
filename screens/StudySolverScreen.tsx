@@ -472,7 +472,7 @@ const StudySolverScreen: React.FC = () => {
 
       if (modelMetadata.modelUsed === 'gemini-3-pro-preview' || modelMetadata.modelUsed === 'gemini-1.5-pro') {
         userUpdate['stats.proTokens'] = increment(tokensUsed);
-      } else if (modelMetadata.modelUsed === 'gemini-3-flash-preview') {
+      } else if (modelMetadata.modelUsed === 'gemini-3-pro-preview') {
         userUpdate['stats.flashTokens'] = increment(tokensUsed);
       }
 

@@ -49,7 +49,7 @@ const classifyPrompt = async (prompt: string): Promise<'EASY' | 'HARD'> => {
   const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-3-pro-preview',
       contents: prompt,
       config: {
         systemInstruction: ROUTER_INSTRUCTION,
@@ -78,7 +78,7 @@ export const solveProblem = async (
   if (!image) {
     routerTriggered = true;
     complexity = await classifyPrompt(prompt);
-    selectedModel = complexity === 'HARD' ? 'gemini-3-pro-preview' : 'gemini-3-flash-preview';
+    selectedModel = complexity === 'HARD' ? 'gemini-3-pro-preview' : 'gemini-3-pro-preview';
   }
 
   const contents: any[] = history.map(msg => ({
@@ -130,7 +130,7 @@ export const generateGlobalReport = async (data: string): Promise<string> => {
   const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
   const prompt = `As a Senior Administrator, analyze this data and generate a report in Markdown:\n${data}`;
   const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
+    model: 'gemini-3-pro-preview',
     contents: prompt,
   });
   return response.text || "Report failed.";
@@ -198,7 +198,7 @@ export const analyzeLearningInsights = async (history: string): Promise<string> 
   - Keep sentences short and professional.`;
 
   const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
+    model: 'gemini-3-pro-preview',
     contents: prompt,
   });
   return response.text || "Not enough data.";

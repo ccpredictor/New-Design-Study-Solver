@@ -6,15 +6,14 @@ import { doc, getDoc, setDoc, updateDoc, addDoc, collection, query, orderBy, lim
 const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
 
 export interface StudentProfile {
-    preferred_explanation_style: 'EXAMPLE' | 'STEP_BY_STEP' | 'SHORT' | 'DETAILED';
+    preferred_explanation_styles: ('EXAMPLE' | 'STEP_BY_STEP' | 'SHORT' | 'DETAILED')[];
     language_preference: 'GUJARATI' | 'HINDI' | 'ENGLISH' | 'MIX';
     confidence_level: number;
     question_hesitation_level: number;
     tone_preference: 'FRIENDLY' | 'STRICT_BUT_KIND' | 'VERY_SIMPLE';
     grade: string;
     name: string;
-    subjects_of_interest: string[];
-    difficulty_type?: 'MEMORY' | 'UNDERSTANDING' | 'QUESTION_FORMULATION' | 'PRACTICE';
+    difficulty_types?: ('MEMORY' | 'UNDERSTANDING' | 'QUESTION_FORMULATION' | 'PRACTICE')[];
     stuck_strategy?: 'RE_READ' | 'ASK' | 'SKIP' | 'SEARCH';
     most_helpful_format?: 'ANALOGIES' | 'QA' | 'SUMMARY' | 'RE_EXPLAIN';
     ai_primary_goal?: 'RE_EXPLAIN' | 'SIMPLIFY' | 'DOUBT_CLEAR' | 'HOMEWORK';
@@ -44,12 +43,11 @@ const ONBOARDING_ANALYZER_PROMPT = `
 Analyze the following onboarding responses from a student and generate a learning profile JSON.
 SCHEMA:
 {
-  "preferred_explanation_style": "EXAMPLE" | "STEP_BY_STEP" | "SHORT" | "DETAILED",
+  "preferred_explanation_styles": ("EXAMPLE" | "STEP_BY_STEP" | "SHORT" | "DETAILED")[],
   "language_preference": "GUJARATI" | "HINDI" | "ENGLISH" | "MIX",
   "grade": string,
   "name": string,
-  "subjects_of_interest": string[],
-  "difficulty_type": "MEMORY" | "UNDERSTANDING" | "QUESTION_FORMULATION" | "PRACTICE",
+  "difficulty_types": ("MEMORY" | "UNDERSTANDING" | "QUESTION_FORMULATION" | "PRACTICE")[],
   "stuck_strategy": "RE_READ" | "ASK" | "SKIP" | "SEARCH",
   "most_helpful_format": "ANALOGIES" | "QA" | "SUMMARY" | "RE_EXPLAIN",
   "ai_primary_goal": "RE_EXPLAIN" | "SIMPLIFY" | "DOUBT_CLEAR" | "HOMEWORK",
@@ -67,7 +65,7 @@ SESSION SUMMARY: ${summary}
 RULES:
 1. Language: Default to Gujarati if preference is GUJARATI or MIX. Use simple terms.
 2. Reassurance: If question_hesitation_level > 50, use lines like “અહીં ખોટું ચાલે છે, ફરી પૂછો.”
-3. Style:
+3. Style (Combine these if multiple are present):
    - EXAMPLE: Use daily-life analogies.
    - STEP_BY_STEP: Use numbered logic.
    - SHORT: Be concise (3-6 bullets).
@@ -89,8 +87,9 @@ RULES:
 1. ONLY output a JSON patch of changed fields.
 2. confidence_level: max +/- 10 change.
 3. question_hesitation_level: max +/- 10 change.
-4. preferred_explanation_style: Change ONLY if evidence is overwhelming.
-5. No new fields. No extra text.
+4. preferred_explanation_styles: Update the list of styles if user shows new preferences.
+5. difficulty_types: Update based on recent struggles.
+6. No new fields. No extra text.
 
 Example Output: {"confidence_level": 85, "profile_evidence": ["Showed strong grasp of quadratic formula."]}
 `;
@@ -119,7 +118,7 @@ export const TeacherAssistantService = {
     async completeOnboarding(uid: string, answers: { q: string, a: string }[], explicitData: { name: string, grade: string }) {
         // 1. Analyze with Gemini
         const result = await genAI.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gemini-3-pro-preview",
             contents: [{ role: 'user', parts: [{ text: `${ONBOARDING_ANALYZER_PROMPT}\n\nSTUDENT RESPONSES:\n${JSON.stringify(answers)}` }] }],
             config: { responseMimeType: "application/json" }
         });
@@ -128,10 +127,9 @@ export const TeacherAssistantService = {
 
         // 2. Validate and Save (Prioritize explicit data for critical fields)
         const profile: StudentProfile = {
-            preferred_explanation_style: profileData.preferred_explanation_style || 'STEP_BY_STEP',
+            preferred_explanation_styles: profileData.preferred_explanation_styles || ['STEP_BY_STEP'],
             language_preference: profileData.language_preference || 'GUJARATI',
             tone_preference: profileData.tone_preference || 'FRIENDLY',
-            subjects_of_interest: profileData.subjects_of_interest || [],
             confidence_level: 70, // Default if not asked
             question_hesitation_level: 30, // Default if not asked
             ...profileData,
@@ -167,7 +165,7 @@ export const TeacherAssistantService = {
 
         // Call Gemini
         const result = await genAI.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gemini-3-pro-preview",
             contents: [
                 { role: 'user', parts: [{ text: systemInstruction }] },
                 ...history.map(m => ({
@@ -189,7 +187,7 @@ export const TeacherAssistantService = {
         if (!profile) return;
 
         const result = await genAI.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gemini-3-pro-preview",
             contents: [{ role: 'user', parts: [{ text: PROFILE_UPDATER_PROMPT(profile, summary) }] }],
             config: { responseMimeType: "application/json" }
         });
@@ -216,7 +214,7 @@ export const TeacherAssistantService = {
      */
     async getOnboardingHelp(questionContext: string, userQuery: string) {
         const result = await genAI.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gemini-3-pro-preview",
             contents: [
                 { role: 'user', parts: [{ text: ONBOARDING_HELPLINE_PROMPT }] },
                 { role: 'user', parts: [{ text: `CONTEXT: The student is looking at this part of the form: "${questionContext}"\nSTUDENT QUESTION: ${userQuery}` }] }

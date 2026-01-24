@@ -23,7 +23,6 @@ const TRANSLATIONS = {
         q7: "૭. જો કોઈ topic સમજવામાં અટકો, તો તમે સામાન્ય રીતે શું કરો છો?",
         q8: "૮. ભણતી વખતે તમને સૌથી વધારે મદદ કઈ બાબતથી મળે છે?",
         q9: "૯. આ AI પાસેથી તમે મુખ્યત્વે કઈ મદદ ઈચ્છો છો?",
-        q10: "૧૦. તમે કયા વિષયોમાં વધારે મદદ ઈચ્છો છો?",
         name_placeholder: "તમારું નામ લખો...",
         subject_placeholder: "ગણિત, વિજ્ઞાન, વગેરે...",
         analyzing: "વિશ્લેષણ કરી રહ્યા છીએ...",
@@ -53,7 +52,6 @@ const TRANSLATIONS = {
         q7: "7. यदि आप किसी टॉपिक में अटक जाते हैं, तो आप क्या करते हैं?",
         q8: "8. पढ़ते समय आपको सबसे ज्यादा मदद किससे मिलती है?",
         q9: "9. आप इस AI से मुख्य रूप से क्या मदद चाहते हैं?",
-        q10: "10. आप किन विषयों में मदद चाहते हैं?",
         name_placeholder: "अपना नाम लिखें...",
         subject_placeholder: "गणित, विज्ञान, आदि...",
         analyzing: "विश्लेषण कर रहे हैं...",
@@ -83,7 +81,6 @@ const TRANSLATIONS = {
         q7: "7. What do you do when you get stuck?",
         q8: "8. What helps you the most while studying?",
         q9: "9. What help do you expect from this AI?",
-        q10: "10. Which subjects do you need help with?",
         name_placeholder: "Enter your name...",
         subject_placeholder: "Maths, Science, etc...",
         analyzing: "Analyzing...",
@@ -107,7 +104,6 @@ const UI_LANGUAGES = [
 ];
 
 const GRADES = ["5", "6", "7", "8", "9", "10", "11", "12", "Other"];
-const SUBJECT_LIST = ["ગણિત", "વિજ્ઞાન", "ગુજરાતી", "અંગ્રેજી", "સામાજિક વિજ્ઞાન", "અન્ય"];
 
 const OnboardingForm: React.FC<OnboardingFormProps> = ({ uid, onComplete }) => {
     const [step, setStep] = useState(0);
@@ -115,14 +111,13 @@ const OnboardingForm: React.FC<OnboardingFormProps> = ({ uid, onComplete }) => {
     const [formData, setFormData] = useState({
         name: '',
         grade: '10',
-        style: 'STEP_BY_STEP',
+        styles: ['STEP_BY_STEP'],
         language: 'GUJARATI',
         tone: 'FRIENDLY',
-        difficulty: 'MEMORY',
+        difficulties: ['MEMORY'],
         stuckStrategy: 'RE_READ',
         helpfulFormat: 'ANALOGIES',
-        aiGoal: 'RE_EXPLAIN',
-        subjects: [] as string[]
+        aiGoal: 'RE_EXPLAIN'
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showHelpline, setShowHelpline] = useState(false);
@@ -143,13 +138,29 @@ const OnboardingForm: React.FC<OnboardingFormProps> = ({ uid, onComplete }) => {
         setStep(1);
     };
 
-    const toggleSubject = (sub: string) => {
-        setFormData(prev => ({
-            ...prev,
-            subjects: prev.subjects.includes(sub)
-                ? prev.subjects.filter(s => s !== sub)
-                : [...prev.subjects, sub]
-        }));
+    const toggleStyle = (id: string) => {
+        setFormData(prev => {
+            const isSelected = prev.styles.includes(id);
+            if (isSelected) {
+                // Keep at least one style
+                if (prev.styles.length <= 1) return prev;
+                return { ...prev, styles: prev.styles.filter(s => s !== id) };
+            } else {
+                return { ...prev, styles: [...prev.styles, id] };
+            }
+        });
+    };
+
+    const toggleDifficulty = (id: string) => {
+        setFormData(prev => {
+            const isSelected = prev.difficulties.includes(id);
+            if (isSelected) {
+                if (prev.difficulties.length <= 1) return prev;
+                return { ...prev, difficulties: prev.difficulties.filter(d => d !== id) };
+            } else {
+                return { ...prev, difficulties: [...prev.difficulties, id] };
+            }
+        });
     };
 
     const handleHelp = async () => {
@@ -178,14 +189,13 @@ const OnboardingForm: React.FC<OnboardingFormProps> = ({ uid, onComplete }) => {
                 { q: "Preferred UI Language", a: uiLanguage },
                 { q: "1. Full Name", a: formData.name },
                 { q: "2. Current Grade", a: formData.grade },
-                { q: "3. Learning Style Preference", a: formData.style },
+                { q: "3. Learning Style Preferences", a: formData.styles.join(", ") },
                 { q: "4. Comfortable Language", a: formData.language },
                 { q: "5. Preferred Teacher Tone", a: formData.tone },
-                { q: "6. Primary Study Difficulty", a: formData.difficulty },
+                { q: "6. Primary Study Difficulties", a: formData.difficulties.join(", ") },
                 { q: "7. Strategy When Stuck", a: formData.stuckStrategy },
                 { q: "8. Most Helpful Study Format", a: formData.helpfulFormat },
-                { q: "9. Main Help Wanted from AI", a: formData.aiGoal },
-                { q: "10. Subjects for Help", a: formData.subjects.join(", ") }
+                { q: "9. Main Help Wanted from AI", a: formData.aiGoal }
             ];
 
             const profile = await TeacherAssistantService.completeOnboarding(uid, answers, { name: formData.name, grade: formData.grade });
@@ -257,18 +267,28 @@ const OnboardingForm: React.FC<OnboardingFormProps> = ({ uid, onComplete }) => {
                         <div>
                             <label className="block text-lg sm:text-xl font-bold text-slate-900 dark:text-white mb-3 sm:mb-4">{t.q3}</label>
                             <div className="grid gap-3">
-                                {Object.entries(t.styles).map(([id, label]) => (
-                                    <button
-                                        key={id}
-                                        onClick={() => setFormData({ ...formData, style: id })}
-                                        className={`p-4 sm:p-5 rounded-2xl text-left border-2 transition-all flex items-center group ${formData.style === id ? 'bg-indigo-500 border-indigo-500 text-white shadow-xl md:scale-[1.02]' : 'bg-white dark:bg-charcoal-800 border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-400 hover:border-indigo-200'}`}
-                                    >
-                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center mr-4 transition-colors ${formData.style === id ? 'bg-white/20' : 'bg-indigo-50 dark:bg-charcoal-700'}`}>
-                                            <span className="text-lg">{id === 'EXAMPLE' ? '💡' : id === 'STEP_BY_STEP' ? '🪜' : id === 'SHORT' ? '⚡' : '📚'}</span>
-                                        </div>
-                                        <div className="font-bold">{label}</div>
-                                    </button>
-                                ))}
+                                {Object.entries(t.styles).map(([id, label]) => {
+                                    const isSelected = formData.styles.includes(id);
+                                    return (
+                                        <button
+                                            key={id}
+                                            onClick={() => toggleStyle(id)}
+                                            className={`p-4 sm:p-5 rounded-2xl text-left border-2 transition-all flex items-center group relative ${isSelected ? 'bg-indigo-500 border-indigo-500 text-white shadow-xl md:scale-[1.02]' : 'bg-white dark:bg-charcoal-800 border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-400 hover:border-indigo-200'}`}
+                                        >
+                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center mr-4 transition-colors ${isSelected ? 'bg-white/20' : 'bg-indigo-50 dark:bg-charcoal-700'}`}>
+                                                <span className="text-lg">{id === 'EXAMPLE' ? '💡' : id === 'STEP_BY_STEP' ? '🪜' : id === 'SHORT' ? '⚡' : '📚'}</span>
+                                            </div>
+                                            <div className="font-bold flex-1">{label}</div>
+                                            {isSelected && (
+                                                <div className="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center">
+                                                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                                                    </svg>
+                                                </div>
+                                            )}
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
                     </div>
@@ -312,15 +332,25 @@ const OnboardingForm: React.FC<OnboardingFormProps> = ({ uid, onComplete }) => {
                         <div>
                             <label className="block text-lg sm:text-xl font-bold text-slate-900 dark:text-white mb-3 sm:mb-4">{t.q6}</label>
                             <div className="grid gap-2">
-                                {Object.entries(t.diffs).map(([id, label]) => (
-                                    <button
-                                        key={id}
-                                        onClick={() => setFormData({ ...formData, difficulty: id })}
-                                        className={`p-4 rounded-xl text-left border-2 transition-all text-xs sm:text-sm font-bold ${formData.difficulty === id ? 'bg-indigo-500 border-indigo-500 text-white' : 'bg-white dark:bg-charcoal-800 border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-400'}`}
-                                    >
-                                        {label}
-                                    </button>
-                                ))}
+                                {Object.entries(t.diffs).map(([id, label]) => {
+                                    const isSelected = formData.difficulties.includes(id);
+                                    return (
+                                        <button
+                                            key={id}
+                                            onClick={() => toggleDifficulty(id)}
+                                            className={`p-4 rounded-xl text-left border-2 transition-all text-xs sm:text-sm font-bold flex items-center justify-between ${isSelected ? 'bg-indigo-500 border-indigo-500 text-white' : 'bg-white dark:bg-charcoal-800 border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-400'}`}
+                                        >
+                                            <span className="flex-1">{label}</span>
+                                            {isSelected && (
+                                                <div className="w-5 h-5 bg-white/20 rounded-full flex items-center justify-center ml-3">
+                                                    <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                                                    </svg>
+                                                </div>
+                                            )}
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
                         <div>
@@ -366,20 +396,6 @@ const OnboardingForm: React.FC<OnboardingFormProps> = ({ uid, onComplete }) => {
                                         className={`p-3 rounded-xl border-2 text-xs font-bold transition-all ${formData.aiGoal === id ? 'bg-indigo-500 border-indigo-500 text-white shadow-md' : 'bg-white dark:bg-charcoal-800 border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-400'}`}
                                     >
                                         {label}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                        <div>
-                            <label className="block text-lg sm:text-xl font-bold text-slate-900 dark:text-white mb-3 sm:mb-4">{t.q10}</label>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
-                                {SUBJECT_LIST.map(sub => (
-                                    <button
-                                        key={sub}
-                                        onClick={() => toggleSubject(sub)}
-                                        className={`p-3 rounded-xl text-xs sm:text-sm font-bold border-2 transition-all ${formData.subjects.includes(sub) ? 'bg-emerald-500 border-emerald-500 text-white shadow-lg' : 'bg-white dark:bg-charcoal-800 border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-400 hover:border-emerald-200'}`}
-                                    >
-                                        {formData.subjects.includes(sub) ? '✅ ' : ''}{sub}
                                     </button>
                                 ))}
                             </div>
