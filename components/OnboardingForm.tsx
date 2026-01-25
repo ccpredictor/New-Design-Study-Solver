@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { TeacherAssistantService, StudentProfile } from '../services/teacherAssistantService';
 
 interface OnboardingFormProps {
@@ -6,93 +6,91 @@ interface OnboardingFormProps {
     onComplete: (profile: StudentProfile) => void;
 }
 
+interface ChatMessage {
+    id: string;
+    role: 'AI' | 'USER';
+    text: string;
+    type?: 'QUESTION' | 'ANSWER';
+}
+
 const TRANSLATIONS = {
     GUJARATI: {
-        welcome: "તમારી AI અભ્યાસ પ્રોફાઇલ બનાવો",
-        sub: "તમારા પર્સનલ AI ટીચર બનાવવા માટે આ ૧૦ પ્રશ્નોના જવાબ આપો",
-        next: "આગળ",
-        back: "પાછળ",
-        analyze: "મારી પ્રોફાઇલ બનાવો",
-        stepLabels: ["પાયાની વિગત", "શૈલી", "ભાષા/રીત", "આદતો", "ધ્યેય"],
-        q1: "૧. તમારું પૂરું નામ લખો (Full Name)",
-        q2: "૨. તમે હાલમાં કયા ધોરણમાં ભણી રહ્યા છો?",
-        q3: "૩. જો કોઈ નવો વિષય સમજાવવો હોય, તો તમને કઈ રીત વધારે સમજાય? (Learning Style)",
-        q4: "૪. તમે કઈ ભાષામાં વધારે આરામથી ભણી શકો છો?",
-        q5: "૫. શિક્ષકનો સ્વભાવ કેવો હોવો જોઈએ? (Teacher's Tone)",
-        q6: "૬. ભણતી વખતે તમને સામાન્ય રીતે કઈ મુશ્કેલી વધારે આવે છે?",
-        q7: "૭. જો કોઈ topic સમજવામાં અટકો, તો તમે સામાન્ય રીતે શું કરો છો?",
-        q8: "૮. ભણતી વખતે તમને સૌથી વધારે મદદ કઈ બાબતથી મળે છે?",
-        q9: "૯. આ AI પાસેથી તમે મુખ્યત્વે કઈ મદદ ઈચ્છો છો?",
-        name_placeholder: "તમારું નામ લખો...",
-        subject_placeholder: "ગણિત, વિજ્ઞાન, વગેરે...",
-        analyzing: "વિશ્લેષણ કરી રહ્યા છીએ...",
-        helpline: "AI હેલ્પલાઇન",
-        helpline_sub: "સવાલો વિશે પૂછો",
-        helpline_placeholder: "દા.ત., આ સવાલનો અર્થ શું છે?",
-        styles: { EXAMPLE: 'ઉદાહરણ સાથે', STEP_BY_STEP: 'સ્ટેપ-બાય-સ્ટેપ', SHORT: 'ટૂંકમાં (ઝડપથી)', DETAILED: 'ઊંડાણમાં' },
-        tones: { FRIENDLY: 'મિત્ર જેવો', STRICT_BUT_KIND: 'શાંત અને ગંભીર', VERY_SIMPLE: 'બહુ સરળ શબ્દોમાં' },
-        diffs: { MEMORY: 'સમજાય છે પણ યાદ નથી રહેતું', UNDERSTANDING: 'શરૂઆતમાં સમજાતું નથી', QUESTION: 'પ્રશ્નો ક્યાંથી પૂછવા તે સમજાતું નથી', PRACTICE: 'બસ પ્રેક્ટિસ ઓછી છે' },
-        strats: { RE_READ: 'ફરી વાંચું છું', ASK: 'કોઈને પૂછું છું', SKIP: 'છોડીને આગળ વધું છું', SEARCH: 'ઇન્ટરનેટ પર શોધું છું' },
-        formats: { ANALOGIES: 'રોજિંદા ઉદાહરણો', QA: 'પ્રશ્ન–જવાબ', SUMMARY: 'ટૂંકા સમરી', RE_EXPLAIN: 'અલગ રીતે સમજાવવું' },
-        goals: { RE_EXPLAIN: 'ફરી સમજાવવી', SIMPLIFY: 'સરળ શબ્દોમાં', DOUBT: 'ડાઉટ ક્લિયર કરવો', HOMEWORK: 'હોમવર્કમાં મદદ' }
+        welcome: "તમારા પર્સનલ AI ટીચર સાથે વાત કરો",
+        intro: "નમસ્તે! હું તમારો નવો AI ટીચર છું. તમારો શ્રેષ્ઠ અભ્યાસ અનુભવ બનાવવા માટે મારે તમારી થોડી વિગતો જોઈએ છે.",
+        analyzing: "તમારી પ્રોફાઇલ તૈયાર થઈ રહી છે...",
+        q1: "૧. તમારું પૂરું નામ શું છે?",
+        q2: "૨. તમે કયા ધોરણમાં ભણો છો?",
+        q3: "૩. તમે કેવી રીતે ભણવાનું વધારે પસંદ કરો છો? (લર્નિંગ સ્ટાઇલ)",
+        q4: "૪. તમે કઈ ભાષામાં વાત કરવા માંગો છો?",
+        q5: "૫. તમારે ટીચરનો સ્વભાવ કેવો જોઈએ છે?",
+        q6: "૬. ભણતી વખતે કઈ મુશ્કેલી વધારે આવે છે?",
+        q7: "૭. જો કોઈ ટોપિકમાં અટકો, તો તમે શું કરો છો?",
+        q8: "૮. તમને સૌથી વધારે મદદ શેનાથી મળે છે?",
+        q9: "૯. મારી પાસે તમે કઈ મુખ્ય મદદ ઈચ્છો છો?",
+        q10: "૧૦. તમને ભણવામાં સૌથી વધારે ક્યાં અટક આવે છે?",
+        placeholders: {
+            name: "તમારું નામ લખો...",
+            type: "અહીં લખો..."
+        },
+        styles: { EXAMPLE: '💡 ઉદાહરણો સાથે', STEP_BY_STEP: '🪜 સ્ટેપ-બાય-સ્ટેપ', SHORT: '⚡ ઝડપથી', DETAILED: '📚 ઊંડાણમાં' },
+        tones: { FRIENDLY: '😊 મિત્ર જેવો', STRICT_BUT_KIND: '🧘 ગંભીર', VERY_SIMPLE: '✨ સરળ શબ્દોમાં' },
+        diffs: { MEMORY: '🧠 યાદ નથી રહેતું', UNDERSTANDING: '🤯 સમજાતું નથી', QUESTION: '❓ ડાઉટ પૂછવા છે', PRACTICE: '📝 પ્રેક્ટિસ જોઈએ છે' },
+        strats: { RE_READ: '📖 ફરી વાંચું છું', ASK: '🙋 પૂછું છું', SKIP: '⏩ આગળ વધું છું', SEARCH: '🔍 સર્ચ કરું છું' },
+        formats: { ANALOGIES: '💡 ઉદાહરણો', QA: '❓ પ્રશ્નો', SUMMARY: '📝 સમરી', RE_EXPLAIN: '🔄 બીજી રીતે' },
+        goals: { RE_EXPLAIN: '🔄 સમજાવવું', SIMPLIFY: '✨ સરળતા', DOUBT: '❓ ડાઉટ', HOMEWORK: '📝 હોમવર્ક' },
+        obstacles: { MATH_SUMS: '🔢 Sums માં', UNDERSTANDING: '🤯 સમજવામાં', READING_WRITING: '✍️ લખવામાં', MEMORY: '🧠 યાદ રાખવામાં', ALL: '😅 બધું જ' }
     },
     HINDI: {
-        welcome: "अपनी AI स्टडी प्रोफाइल बनाएं",
-        sub: "अपने पर्सनल AI टीचर के लिए इन 10 सवालों के जवाब दें",
-        next: "आगे",
-        back: "पीछे",
-        analyze: "मेरी प्रोफाइल बनाएं",
-        stepLabels: ["बेसिक", "शैली", "भाषा", "आदतें", "लक्ष्य"],
-        q1: "1. अपना पूरा नाम लिखें (Full Name)",
-        q2: "2. आप अभी किस कक्षा में पढ़ रहे हैं?",
-        q3: "3. नया विषय समझाने के लिए आपको कौन सा तरीका ज्यादा पसंद है? (Learning Style)",
-        q4: "4. आप किस भाषा में ज्यादा आराम से पढ़ सकते हैं?",
-        q5: "5. शिक्षक का स्वभाव कैसा होना चाहिए? (Teacher's Tone)",
-        q6: "6. पढ़ते समय आपको आमतौर पर क्या समस्या आती है?",
-        q7: "7. यदि आप किसी टॉपिक में अटक जाते हैं, तो आप क्या करते हैं?",
-        q8: "8. पढ़ते समय आपको सबसे ज्यादा मदद किससे मिलती है?",
-        q9: "9. आप इस AI से मुख्य रूप से क्या मदद चाहते हैं?",
-        name_placeholder: "अपना नाम लिखें...",
-        subject_placeholder: "गणित, विज्ञान, आदि...",
-        analyzing: "विश्लेषण कर रहे हैं...",
-        helpline: "AI हेल्पलाइन",
-        helpline_sub: "सवालों के बारे में पूछें",
-        helpline_placeholder: "जैसे, इस सवाल का क्या मतलब है?",
-        styles: { EXAMPLE: 'उदाहरण के साथ', STEP_BY_STEP: 'स्टेप-बाय-स्टेप', SHORT: 'संक्षेप में (Fast)', DETAILED: 'विस्तार में' },
-        tones: { FRIENDLY: 'दोस्त जैसा', STRICT_BUT_KIND: 'शांत और गंभीर', VERY_SIMPLE: 'बहुत सरल शब्दों में' },
-        diffs: { MEMORY: 'समझ आता है पर याद नहीं रहता', UNDERSTANDING: 'शुरुआत में समझ नहीं आता', QUESTION: 'सवाल कहाँ से पूछें समझ नहीं आता', PRACTICE: 'बस प्रैक्टिस कम है' },
-        strats: { RE_READ: 'फिर से पढ़ता हूँ', ASK: 'किसी से पूछता हूँ', SKIP: 'छोड़कर आगे बढ़ता हूँ', SEARCH: 'इंटरनेट पर खोजता हूँ' },
-        formats: { ANALOGIES: 'दैनिक उदाहरण', QA: 'सवाल-जवाब', SUMMARY: 'शॉर्ट समरी', RE_EXPLAIN: 'अलग तरह से समझाना' },
-        goals: { RE_EXPLAIN: 'शांति से समझाना', SIMPLIFY: 'सरल शब्दों में', DOUBT: 'डाउट क्लियर करना', HOMEWORK: 'होमवर्क में मदद' }
+        welcome: "अपने पर्सनल AI टीचर से बात करें",
+        intro: "नमस्ते! मैं आपका नया AI टीचर हूँ। आपकी पढ़ाई को बेहतर बनाने के लिए मुझे आपकी कुछ जानकारी चाहिए।",
+        analyzing: "आपकी प्रोफ़ाइल तैयार हो रही है...",
+        q1: "1. आपका पूरा नाम क्या है?",
+        q2: "2. आप कौन सी कक्षा में पढ़ते हैं?",
+        q3: "3. आप कैसे पढ़ना पसंद करते हैं? (लर्निंग स्टाइल)",
+        q4: "4. आप किस भाषा में बात करना चाहते हैं?",
+        q5: "5. टीचर का स्वभाव कैसा होना चाहिए?",
+        q6: "6. पढ़ते समय क्या समस्या आती है?",
+        q7: "7. यदि आप अटक जाते हैं, तो क्या करते हैं?",
+        q8: "8. आपको सबसे ज्यादा मदद किससे मिलती है?",
+        q9: "9. आप मुझसे क्या मदद चाहते हैं?",
+        q10: "10. आपको पढ़ाई में सबसे ज्यादा कहाँ रुकावट आती है?",
+        placeholders: {
+            name: "अपना नाम लिखें...",
+            type: "यहाँ लिखें..."
+        },
+        styles: { EXAMPLE: '💡 उदाहरण के साथ', STEP_BY_STEP: '🪜 स्टेप-बाय-स्टेप', SHORT: '⚡ संक्षेप में', DETAILED: '📚 विस्तार में' },
+        tones: { FRIENDLY: '😊 दोस्त जैसा', STRICT_BUT_KIND: '🧘 गंभीर', VERY_SIMPLE: '✨ सरल शब्दों में' },
+        diffs: { MEMORY: '🧠 याद नहीं रहता', UNDERSTANDING: '🤯 समझ नहीं आता', QUESTION: '❓ सवाल पूछने हैं', PRACTICE: '📝 प्रैक्टिस चाहिए' },
+        strats: { RE_READ: '📖 फिर पढ़ता हूँ', ASK: '🙋 पूछता हूँ', SKIP: '⏩ आगे बढ़ता हूँ', SEARCH: '🔍 इंटरनेट' },
+        formats: { ANALOGIES: '💡 उदाहरण', QA: '❓ सवाल-जवाब', SUMMARY: '📝 समरी', RE_EXPLAIN: '🔄 अलग तरीका' },
+        goals: { RE_EXPLAIN: '🔄 समझाना', SIMPLIFY: '✨ सरल करना', DOUBT: '❓ डाउट', HOMEWORK: '📝 होमवर्क' },
+        obstacles: { MATH_SUMS: '🔢 सवाल हल करना', UNDERSTANDING: '🤯 समझने में', READING_WRITING: '✍️ लिखने में', MEMORY: '🧠 याद रखने में', ALL: '😅 सब में' }
     },
     ENGLISH: {
-        welcome: "Build Your AI Study Profile",
-        sub: "Answer these 10 questions to build your personal AI Teacher",
-        next: "Next",
-        back: "Back",
-        analyze: "Analyze My Profile",
-        stepLabels: ["Basics", "Style", "Interaction", "Habits", "AI Help"],
-        q1: "1. Enter your full name",
+        welcome: "Chat with your AI Teacher",
+        intro: "Hi! I'm your new AI Teacher. To give you the best learning experience, I'd like to know a bit about you.",
+        analyzing: "Creating your profile...",
+        q1: "1. What is your full name?",
         q2: "2. Which grade are you in?",
-        q3: "3. How do you like to learn new topics? (Learning Style)",
-        q4: "4. Which language is most comfortable for you?",
-        q5: "5. What should the teacher's tone be?",
-        q6: "6. What difficulty do you face while studying?",
-        q7: "7. What do you do when you get stuck?",
+        q3: "3. How do you like to learn new topics?",
+        q4: "4. Which language do you prefer?",
+        q5: "5. What should my teaching tone be?",
+        q6: "6. What is your main study difficulty?",
+        q7: "7. What do you do when you're stuck?",
         q8: "8. What helps you the most while studying?",
-        q9: "9. What help do you expect from this AI?",
-        name_placeholder: "Enter your name...",
-        subject_placeholder: "Maths, Science, etc...",
-        analyzing: "Analyzing...",
-        helpline: "AI Helpline",
-        helpline_sub: "Ask about these questions",
-        helpline_placeholder: "E.g., What does learning style mean?",
-        styles: { EXAMPLE: 'With Examples', STEP_BY_STEP: 'Step-by-Step', SHORT: 'Quick / Concise', DETAILED: 'Deep Dive / Theory' },
-        tones: { FRIENDLY: 'Friendly / Peer', STRICT_BUT_KIND: 'Calm and Serious', VERY_SIMPLE: 'Very Simple Words' },
-        diffs: { MEMORY: 'I understand but forget', UNDERSTANDING: 'Hard to understand at first', QUESTION: 'Not sure what to ask', PRACTICE: 'Everything is fine, just need practice' },
-        strats: { RE_READ: 'Re-read the topic', ASK: 'Ask someone for help', SKIP: 'Skip it for now', SEARCH: 'Search on Google/Net' },
-        formats: { ANALOGIES: 'Real-life analogies', QA: 'Question-Answer', SUMMARY: 'Short summaries', RE_EXPLAIN: 'Different explanations' },
-        goals: { RE_EXPLAIN: 'Re-explaining clearly', SIMPLIFY: 'Simplify topics', DOUBT: 'Doubt clearing', HOMEWORK: 'Homework assistance' }
+        q9: "9. Primary help you expect from me?",
+        q10: "10. Where do you get stuck the most?",
+        placeholders: {
+            name: "Enter your name...",
+            type: "Type here..."
+        },
+        styles: { EXAMPLE: '💡 Examples', STEP_BY_STEP: '🪜 Step-by-Step', SHORT: '⚡ Concise', DETAILED: '📚 Deep Dive' },
+        tones: { FRIENDLY: '😊 Friendly', STRICT_BUT_KIND: '🧘 Serious', VERY_SIMPLE: '✨ Simple' },
+        diffs: { MEMORY: '🧠 Memory', UNDERSTANDING: '🤯 Understanding', QUESTION: '❓ Questions', PRACTICE: '📝 Practice' },
+        strats: { RE_READ: '📖 Re-read', ASK: '🙋 Ask help', SKIP: '⏩ Skip for now', SEARCH: '🔍 Search' },
+        formats: { ANALOGIES: '💡 Analogies', QA: '❓ Q&A', SUMMARY: '📝 Summaries', RE_EXPLAIN: '🔄 Re-explain' },
+        goals: { RE_EXPLAIN: '🔄 Explaining', SIMPLIFY: '✨ Simplifying', DOUBT: '❓ Doubts', HOMEWORK: '📝 Homework' },
+        obstacles: { MATH_SUMS: '🔢 Sums', UNDERSTANDING: '🤯 Understanding', READING_WRITING: '✍️ Writing', MEMORY: '🧠 Memory', ALL: '😅 Everything' }
     }
 };
 
@@ -106,300 +104,328 @@ const UI_LANGUAGES = [
 const GRADES = ["5", "6", "7", "8", "9", "10", "11", "12", "Other"];
 
 const OnboardingForm: React.FC<OnboardingFormProps> = ({ uid, onComplete }) => {
-    const [step, setStep] = useState(0);
+    const [messages, setMessages] = useState<ChatMessage[]>([]);
+    const [currentStep, setCurrentStep] = useState(-1); // -1 = Lang selection
     const [uiLanguage, setUiLanguage] = useState<'GUJARATI' | 'HINDI' | 'ENGLISH'>('GUJARATI');
+    const [isTyping, setIsTyping] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [tempSelections, setTempSelections] = useState<string[]>([]);
+
+    // Form Data State
     const [formData, setFormData] = useState({
         name: '',
-        grade: '10',
-        styles: ['STEP_BY_STEP'],
-        language: 'GUJARATI',
-        tone: 'FRIENDLY',
-        difficulties: ['MEMORY'],
-        stuckStrategy: 'RE_READ',
-        helpfulFormat: 'ANALOGIES',
-        aiGoal: 'RE_EXPLAIN'
+        grade: '',
+        styles: [] as string[],
+        language: '',
+        tone: '',
+        difficulties: [] as string[],
+        stuckStrategy: '',
+        helpfulFormat: '',
+        aiGoal: '',
+        obstacles: [] as string[]
     });
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [showHelpline, setShowHelpline] = useState(false);
-    const [helplineQuery, setHelplineQuery] = useState('');
-    const [helplineResponse, setHelplineResponse] = useState('');
-    const [isLoadingHelp, setIsLoadingHelp] = useState(false);
 
+    const scrollRef = useRef<HTMLDivElement>(null);
     const t = TRANSLATIONS[uiLanguage] || TRANSLATIONS.GUJARATI;
-    const totalSteps = 5;
 
-    const nextStep = () => setStep(s => Math.min(s + 1, totalSteps));
-    const prevStep = () => setStep(s => Math.max(s - 1, 0));
+    // Auto scroll to bottom
+    useEffect(() => {
+        if (scrollRef.current) {
+            scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+        }
+    }, [messages, isTyping]);
 
-    const selectUiLanguage = (lang: string) => {
+    // Initial Message
+    useEffect(() => {
+        if (currentStep === -1) {
+            addAIMessage("👋 નમસ્તે! તમારી ભાષા પસંદ કરો / Select your language:");
+        }
+    }, []);
+
+    const addAIMessage = (text: string) => {
+        setIsTyping(true);
+        setTimeout(() => {
+            setMessages(prev => [...prev, { id: Date.now().toString(), role: 'AI', text }]);
+            setIsTyping(false);
+        }, 1000);
+    };
+
+    const addUserMessage = (text: string) => {
+        setMessages(prev => [...prev, { id: Date.now().toString() + 'u', role: 'USER', text }]);
+    };
+
+    const toggleMultiSelect = (id: string, field: 'styles' | 'difficulties' | 'obstacles') => {
+        setTempSelections(prev => {
+            const isSelected = prev.includes(id);
+            if (isSelected) {
+                return prev.filter(x => x !== id);
+            } else {
+                return [...prev, id];
+            }
+        });
+    };
+
+    const handleLanguageSelect = (lang: string) => {
         const actualLang = lang === 'MIX' ? 'GUJARATI' : lang as any;
         setUiLanguage(actualLang);
         setFormData(prev => ({ ...prev, language: lang }));
-        setStep(1);
+        addUserMessage(UI_LANGUAGES.find(l => l.id === lang)?.label || lang);
+
+        setTimeout(() => {
+            addAIMessage(TRANSLATIONS[actualLang].intro);
+            setTimeout(() => {
+                addAIMessage(TRANSLATIONS[actualLang].q1);
+                setCurrentStep(1);
+            }, 1200);
+        }, 800);
     };
 
-    const toggleStyle = (id: string) => {
-        setFormData(prev => {
-            const isSelected = prev.styles.includes(id);
-            if (isSelected) {
-                // Keep at least one style
-                if (prev.styles.length <= 1) return prev;
-                return { ...prev, styles: prev.styles.filter(s => s !== id) };
+    const handleNext = (val: any, label: string) => {
+        addUserMessage(label);
+
+        // Update Step & AI Response
+        const nextStep = currentStep + 1;
+        setCurrentStep(nextStep);
+
+        setTimeout(() => {
+            if (nextStep <= 10) {
+                addAIMessage((t as any)[`q${nextStep}`]);
             } else {
-                return { ...prev, styles: [...prev.styles, id] };
+                addAIMessage(t.analyzing);
+                finalizeOnboarding({ ...formData });
             }
-        });
+        }, 1000);
     };
 
-    const toggleDifficulty = (id: string) => {
-        setFormData(prev => {
-            const isSelected = prev.difficulties.includes(id);
-            if (isSelected) {
-                if (prev.difficulties.length <= 1) return prev;
-                return { ...prev, difficulties: prev.difficulties.filter(d => d !== id) };
-            } else {
-                return { ...prev, difficulties: [...prev.difficulties, id] };
-            }
-        });
-    };
-
-    const handleHelp = async () => {
-        if (!helplineQuery.trim()) return;
-        setIsLoadingHelp(true);
-        try {
-            const context = `User UI Language: ${uiLanguage}. Step ${step}.`;
-            const res = await TeacherAssistantService.getOnboardingHelp(context, helplineQuery);
-            setHelplineResponse(res);
-        } catch (e) {
-            setHelplineResponse(uiLanguage === 'ENGLISH' ? "Sorry, help is unavailable right now." : "ક્ષમા કરશો, અત્યારે મદદ મળી શકે તેમ નથી.");
-        } finally {
-            setIsLoadingHelp(false);
-        }
-    };
-
-    const handleSubmit = async () => {
-        if (!formData.name.trim()) {
-            alert(uiLanguage === 'ENGLISH' ? "Please enter your name." : "તમારું નામ લખવું જરૂરી છે.");
-            setStep(1);
-            return;
-        }
+    const finalizeOnboarding = async (data: any) => {
         setIsSubmitting(true);
         try {
             const answers = [
-                { q: "Preferred UI Language", a: uiLanguage },
-                { q: "1. Full Name", a: formData.name },
-                { q: "2. Current Grade", a: formData.grade },
-                { q: "3. Learning Style Preferences", a: formData.styles.join(", ") },
-                { q: "4. Comfortable Language", a: formData.language },
-                { q: "5. Preferred Teacher Tone", a: formData.tone },
-                { q: "6. Primary Study Difficulties", a: formData.difficulties.join(", ") },
-                { q: "7. Strategy When Stuck", a: formData.stuckStrategy },
-                { q: "8. Most Helpful Study Format", a: formData.helpfulFormat },
-                { q: "9. Main Help Wanted from AI", a: formData.aiGoal }
+                { q: "1. Name", a: data.name },
+                { q: "2. Grade", a: data.grade },
+                { q: "3. Styles", a: data.styles.join(", ") },
+                { q: "4. Lang", a: data.language },
+                { q: "5. Tone", a: data.tone },
+                { q: "6. Diffs", a: data.difficulties.join(", ") },
+                { q: "7. Stuck", a: data.stuckStrategy },
+                { q: "8. Format", a: data.helpfulFormat },
+                { q: "9. Goal", a: data.aiGoal },
+                { q: "10. Obstacles", a: data.obstacles.join(", ") }
             ];
-
-            const profile = await TeacherAssistantService.completeOnboarding(uid, answers, { name: formData.name, grade: formData.grade });
+            const profile = await TeacherAssistantService.completeOnboarding(uid, answers, { name: data.name, grade: data.grade });
             onComplete(profile);
-        } catch (error) {
-            console.error("Onboarding failed", error);
-            alert("Something went wrong. Please try again.");
+        } catch (e) {
+            console.error(e);
+            alert("Submission error. Try again.");
             setIsSubmitting(false);
         }
     };
 
-    const renderStep = () => {
-        if (step === 0) {
+    const renderInput = () => {
+        if (isTyping || isSubmitting) return null;
+
+        if (currentStep === -1) {
             return (
-                <div className="space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <div className="text-center mb-8">
-                        <h2 className="text-xl sm:text-3xl font-black text-slate-900 dark:text-white mb-2">Select Your Language</h2>
-                        <p className="text-base font-bold text-slate-500 dark:text-slate-400">તમારી મનપસંદ ભાષા પસંદ કરો</p>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {UI_LANGUAGES.map(l => (
-                            <button
-                                key={l.id}
-                                onClick={() => selectUiLanguage(l.id)}
-                                className="p-6 bg-white dark:bg-charcoal-800 border-2 border-slate-100 dark:border-white/5 rounded-3xl hover:border-indigo-500 transition-all flex flex-col items-center group shadow-sm hover:shadow-xl hover:scale-[1.02]"
-                            >
-                                <span className="text-4xl mb-3 group-hover:scale-110 transition-transform">{l.emoji}</span>
-                                <span className="text-lg font-black text-slate-900 dark:text-white">{l.label}</span>
-                            </button>
-                        ))}
-                    </div>
+                <div className="flex flex-wrap gap-2 justify-center p-4">
+                    {UI_LANGUAGES.map(l => (
+                        <button key={l.id} onClick={() => handleLanguageSelect(l.id)} className="chip-btn">
+                            {l.emoji} {l.label}
+                        </button>
+                    ))}
                 </div>
             );
         }
 
-        switch (step) {
-            case 1:
+        switch (currentStep) {
+            case 1: // Name
                 return (
-                    <div className="space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
-                        <div>
-                            <label className="block text-lg sm:text-xl font-bold text-slate-900 dark:text-white mb-3 sm:mb-4">{t.q1}</label>
-                            <input
-                                type="text"
-                                className="w-full bg-slate-50 dark:bg-charcoal-800 border-2 border-slate-100 dark:border-white/5 rounded-2xl p-4 sm:p-5 text-base sm:text-lg font-bold text-slate-900 dark:text-white focus:border-indigo-500 transition-all outline-none"
-                                placeholder={t.name_placeholder}
-                                value={formData.name}
-                                onChange={e => setFormData({ ...formData, name: e.target.value })}
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-lg sm:text-xl font-bold text-slate-900 dark:text-white mb-3 sm:mb-4">{t.q2}</label>
-                            <div className="grid grid-cols-3 gap-2 sm:gap-3">
-                                {GRADES.map(g => (
-                                    <button
-                                        key={g}
-                                        onClick={() => setFormData({ ...formData, grade: g })}
-                                        className={`p-3 sm:p-4 rounded-xl text-xs sm:text-sm font-bold border-2 transition-all ${formData.grade === g ? 'bg-indigo-500 border-indigo-500 text-white shadow-lg' : 'bg-white dark:bg-charcoal-800 border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-400 hover:border-indigo-200'}`}
-                                    >
-                                        Std {g}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
+                    <div className="p-4 flex gap-2">
+                        <input
+                            autoFocus
+                            className="flex-1 bg-slate-100 dark:bg-charcoal-800 rounded-2xl p-4 font-bold outline-none text-slate-800 dark:text-white"
+                            placeholder={t.placeholders.name}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' && (e.target as any).value) {
+                                    const val = (e.target as any).value;
+                                    setFormData({ ...formData, name: val });
+                                    handleNext(val, val);
+                                }
+                            }}
+                        />
                     </div>
                 );
-            case 2:
+            case 2: // Grade
                 return (
-                    <div className="space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
-                        <div>
-                            <label className="block text-lg sm:text-xl font-bold text-slate-900 dark:text-white mb-3 sm:mb-4">{t.q3}</label>
-                            <div className="grid gap-3">
-                                {Object.entries(t.styles).map(([id, label]) => {
-                                    const isSelected = formData.styles.includes(id);
-                                    return (
-                                        <button
-                                            key={id}
-                                            onClick={() => toggleStyle(id)}
-                                            className={`p-4 sm:p-5 rounded-2xl text-left border-2 transition-all flex items-center group relative ${isSelected ? 'bg-indigo-500 border-indigo-500 text-white shadow-xl md:scale-[1.02]' : 'bg-white dark:bg-charcoal-800 border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-400 hover:border-indigo-200'}`}
-                                        >
-                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center mr-4 transition-colors ${isSelected ? 'bg-white/20' : 'bg-indigo-50 dark:bg-charcoal-700'}`}>
-                                                <span className="text-lg">{id === 'EXAMPLE' ? '💡' : id === 'STEP_BY_STEP' ? '🪜' : id === 'SHORT' ? '⚡' : '📚'}</span>
-                                            </div>
-                                            <div className="font-bold flex-1">{label}</div>
+                    <div className="flex flex-wrap gap-2 justify-center p-4">
+                        {GRADES.map(g => (
+                            <button key={g} onClick={() => { setFormData({ ...formData, grade: g }); handleNext(g, `Std ${g}`); }} className="chip-btn">
+                                Std {g}
+                            </button>
+                        ))}
+                    </div>
+                );
+            case 3: // Learning Style (Multi)
+                return (
+                    <div className="flex flex-col items-center">
+                        <div className="flex flex-wrap gap-2 justify-center p-4">
+                            {Object.entries(t.styles).map(([id, label]) => {
+                                const isSelected = tempSelections.includes(id);
+                                return (
+                                    <button
+                                        key={id}
+                                        onClick={() => toggleMultiSelect(id, 'styles')}
+                                        className={`chip-btn flex items-center gap-2 ${isSelected ? 'chip-active' : ''}`}
+                                    >
+                                        <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${isSelected ? 'bg-white border-white' : 'bg-transparent border-slate-300'}`}>
                                             {isSelected && (
-                                                <div className="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center">
-                                                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
-                                                    </svg>
-                                                </div>
+                                                <svg className="w-3 h-3 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" d="M5 13l4 4L19 7" />
+                                                </svg>
                                             )}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    </div>
-                );
-            case 3:
-                return (
-                    <div className="space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
-                        <div>
-                            <label className="block text-lg sm:text-xl font-bold text-slate-900 dark:text-white mb-3 sm:mb-4">{t.q4}</label>
-                            <div className="grid grid-cols-2 gap-3">
-                                {UI_LANGUAGES.map(l => (
-                                    <button
-                                        key={l.id}
-                                        onClick={() => setFormData({ ...formData, language: l.id })}
-                                        className={`p-4 rounded-xl font-bold border-2 transition-all ${formData.language === l.id ? 'bg-indigo-500 border-indigo-500 text-white shadow-lg' : 'bg-white dark:bg-charcoal-800 border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-400 hover:border-indigo-200'}`}
-                                    >
-                                        {l.label}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                        <div>
-                            <label className="block text-lg sm:text-xl font-bold text-slate-900 dark:text-white mb-3 sm:mb-4">{t.q5}</label>
-                            <div className="grid gap-3">
-                                {Object.entries(t.tones).map(([id, label]) => (
-                                    <button
-                                        key={id}
-                                        onClick={() => setFormData({ ...formData, tone: id })}
-                                        className={`p-4 rounded-xl font-bold border-2 transition-all ${formData.tone === id ? 'bg-indigo-500 border-indigo-500 text-white shadow-lg' : 'bg-white dark:bg-charcoal-800 border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-400'}`}
-                                    >
+                                        </div>
                                         {label}
                                     </button>
-                                ))}
-                            </div>
+                                );
+                            })}
                         </div>
+                        <button
+                            disabled={tempSelections.length === 0}
+                            onClick={() => {
+                                setFormData({ ...formData, styles: tempSelections });
+                                const labels = tempSelections.map(id => (t.styles as Record<string, string>)[id] || id).join(", ");
+                                setTempSelections([]);
+                                handleNext(tempSelections, labels);
+                            }}
+                            className="bg-indigo-500 text-white px-8 py-3 rounded-2xl font-black uppercase tracking-widest mb-4 shadow-lg shadow-indigo-500/20 active:scale-95 transition-all"
+                        >
+                            Next
+                        </button>
                     </div>
                 );
-            case 4:
+            case 4: // Language Pref
                 return (
-                    <div className="space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-right-4 duration-500 overflow-y-auto max-h-[500px] pr-2 custom-scrollbar">
-                        <div>
-                            <label className="block text-lg sm:text-xl font-bold text-slate-900 dark:text-white mb-3 sm:mb-4">{t.q6}</label>
-                            <div className="grid gap-2">
-                                {Object.entries(t.diffs).map(([id, label]) => {
-                                    const isSelected = formData.difficulties.includes(id);
-                                    return (
-                                        <button
-                                            key={id}
-                                            onClick={() => toggleDifficulty(id)}
-                                            className={`p-4 rounded-xl text-left border-2 transition-all text-xs sm:text-sm font-bold flex items-center justify-between ${isSelected ? 'bg-indigo-500 border-indigo-500 text-white' : 'bg-white dark:bg-charcoal-800 border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-400'}`}
-                                        >
-                                            <span className="flex-1">{label}</span>
+                    <div className="flex flex-wrap gap-2 justify-center p-4">
+                        {UI_LANGUAGES.map(l => (
+                            <button key={l.id} onClick={() => { setFormData({ ...formData, language: l.id }); handleNext(l.id, l.label); }} className="chip-btn">
+                                {l.emoji} {l.label}
+                            </button>
+                        ))}
+                    </div>
+                );
+            case 5: // Tone
+                return (
+                    <div className="flex flex-wrap gap-2 justify-center p-4">
+                        {Object.entries(t.tones).map(([id, label]) => (
+                            <button key={id} onClick={() => { setFormData({ ...formData, tone: id }); handleNext(id, label as string); }} className="chip-btn">
+                                {label}
+                            </button>
+                        ))}
+                    </div>
+                );
+            case 6: // Diffs (Multi)
+                return (
+                    <div className="flex flex-col items-center">
+                        <div className="flex flex-wrap gap-2 justify-center p-4">
+                            {Object.entries(t.diffs).map(([id, label]) => {
+                                const isSelected = tempSelections.includes(id);
+                                return (
+                                    <button
+                                        key={id}
+                                        onClick={() => toggleMultiSelect(id, 'difficulties')}
+                                        className={`chip-btn flex items-center gap-2 ${isSelected ? 'chip-active' : ''}`}
+                                    >
+                                        <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${isSelected ? 'bg-white border-white' : 'bg-transparent border-slate-300'}`}>
                                             {isSelected && (
-                                                <div className="w-5 h-5 bg-white/20 rounded-full flex items-center justify-center ml-3">
-                                                    <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
-                                                    </svg>
-                                                </div>
+                                                <svg className="w-3 h-3 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" d="M5 13l4 4L19 7" />
+                                                </svg>
                                             )}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                        <div>
-                            <label className="block text-lg sm:text-xl font-bold text-slate-900 dark:text-white mb-3 sm:mb-4">{t.q7}</label>
-                            <div className="grid grid-cols-2 gap-2">
-                                {Object.entries(t.strats).map(([id, label]) => (
-                                    <button
-                                        key={id}
-                                        onClick={() => setFormData({ ...formData, stuckStrategy: id })}
-                                        className={`p-3 rounded-xl border-2 text-[10px] sm:text-xs font-bold transition-all ${formData.stuckStrategy === id ? 'bg-indigo-500 border-indigo-500 text-white' : 'bg-white dark:bg-charcoal-800 border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-400'}`}
-                                    >
+                                        </div>
                                         {label}
                                     </button>
-                                ))}
-                            </div>
+                                );
+                            })}
                         </div>
-                        <div>
-                            <label className="block text-lg sm:text-xl font-bold text-slate-900 dark:text-white mb-3 sm:mb-4">{t.q8}</label>
-                            <div className="grid gap-2">
-                                {Object.entries(t.formats).map(([id, label]) => (
-                                    <button
-                                        key={id}
-                                        onClick={() => setFormData({ ...formData, helpfulFormat: id })}
-                                        className={`p-3 rounded-xl border-2 text-xs font-bold transition-all ${formData.helpfulFormat === id ? 'bg-indigo-500 border-indigo-500 text-white' : 'bg-white dark:bg-charcoal-800 border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-400'}`}
-                                    >
-                                        {label}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
+                        <button
+                            disabled={tempSelections.length === 0}
+                            onClick={() => {
+                                setFormData({ ...formData, difficulties: tempSelections });
+                                const labels = tempSelections.map(id => (t.diffs as Record<string, string>)[id] || id).join(", ");
+                                setTempSelections([]);
+                                handleNext(tempSelections, labels);
+                            }}
+                            className="bg-indigo-500 text-white px-8 py-3 rounded-2xl font-black uppercase tracking-widest mb-4 shadow-lg shadow-indigo-500/20 active:scale-95 transition-all"
+                        >
+                            Next
+                        </button>
                     </div>
                 );
-            case 5:
+            case 7: // Stuck
                 return (
-                    <div className="space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
-                        <div>
-                            <label className="block text-lg sm:text-xl font-bold text-slate-900 dark:text-white mb-3 sm:mb-4">{t.q9}</label>
-                            <div className="grid grid-cols-2 gap-3">
-                                {Object.entries(t.goals).map(([id, label]) => (
+                    <div className="flex flex-wrap gap-2 justify-center p-4">
+                        {Object.entries(t.strats).map(([id, label]) => (
+                            <button key={id} onClick={() => { setFormData({ ...formData, stuckStrategy: id }); handleNext(id, label as string); }} className="chip-btn">
+                                {label}
+                            </button>
+                        ))}
+                    </div>
+                );
+            case 8: // Format
+                return (
+                    <div className="flex flex-wrap gap-2 justify-center p-4">
+                        {Object.entries(t.formats).map(([id, label]) => (
+                            <button key={id} onClick={() => { setFormData({ ...formData, helpfulFormat: id }); handleNext(id, label as string); }} className="chip-btn">
+                                {label}
+                            </button>
+                        ))}
+                    </div>
+                );
+            case 9: // Goal
+                return (
+                    <div className="flex flex-wrap gap-2 justify-center p-4">
+                        {Object.entries(t.goals).map(([id, label]) => (
+                            <button key={id} onClick={() => { setFormData({ ...formData, aiGoal: id }); handleNext(id, label as string); }} className="chip-btn">
+                                {label}
+                            </button>
+                        ))}
+                    </div>
+                );
+            case 10: // Obstacles (Multi)
+                return (
+                    <div className="flex flex-col items-center">
+                        <div className="flex flex-wrap gap-2 justify-center p-4">
+                            {Object.entries(t.obstacles).map(([id, label]) => {
+                                const isSelected = tempSelections.includes(id);
+                                return (
                                     <button
                                         key={id}
-                                        onClick={() => setFormData({ ...formData, aiGoal: id })}
-                                        className={`p-3 rounded-xl border-2 text-xs font-bold transition-all ${formData.aiGoal === id ? 'bg-indigo-500 border-indigo-500 text-white shadow-md' : 'bg-white dark:bg-charcoal-800 border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-400'}`}
+                                        onClick={() => toggleMultiSelect(id, 'obstacles')}
+                                        className={`chip-btn flex items-center gap-2 ${isSelected ? 'chip-active' : ''}`}
                                     >
+                                        <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${isSelected ? 'bg-white border-white' : 'bg-transparent border-slate-300'}`}>
+                                            {isSelected && (
+                                                <svg className="w-3 h-3 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" d="M5 13l4 4L19 7" />
+                                                </svg>
+                                            )}
+                                        </div>
                                         {label}
                                     </button>
-                                ))}
-                            </div>
+                                );
+                            })}
                         </div>
+                        <button
+                            disabled={tempSelections.length === 0}
+                            onClick={() => {
+                                setFormData({ ...formData, obstacles: tempSelections });
+                                const labels = tempSelections.map(id => (t.obstacles as Record<string, string>)[id] || id).join(", ");
+                                setTempSelections([]);
+                                handleNext(tempSelections, labels);
+                            }}
+                            className="bg-indigo-500 text-white px-8 py-3 rounded-2xl font-black uppercase tracking-widest mb-4 shadow-lg shadow-indigo-500/20 active:scale-95 transition-all"
+                        >
+                            Finish
+                        </button>
                     </div>
                 );
             default:
@@ -408,151 +434,110 @@ const OnboardingForm: React.FC<OnboardingFormProps> = ({ uid, onComplete }) => {
     };
 
     return (
-        <div className="flex min-h-screen bg-white dark:bg-charcoal-950 overflow-x-hidden font-sans">
-            <div className={`flex-1 flex flex-col items-center justify-start sm:justify-center p-4 sm:p-8 md:p-12 transition-all duration-500 ${showHelpline ? 'md:mr-[380px]' : ''}`}>
-                <div className="max-w-2xl w-full py-8 sm:py-0">
-                    {step > 0 && (
-                        <div className="mb-8 sm:mb-10 text-center">
-                            <div className="inline-block p-2 sm:p-3 bg-indigo-500/10 rounded-2xl mb-3">
-                                <span className="text-xl sm:text-2xl">✨</span>
-                            </div>
-                            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mb-2">{t.welcome}</h1>
-                            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-bold">{t.sub}</p>
+        <div className="flex flex-col h-screen bg-[#F9FBFF] dark:bg-charcoal-950 font-sans">
+            {/* Header */}
+            <div className="p-4 sm:p-6 border-b border-slate-100 dark:border-white/5 bg-white/80 dark:bg-charcoal-900/80 backdrop-blur-md sticky top-0 z-10">
+                <div className="max-w-3xl mx-auto flex items-center justify-between">
+                    <div>
+                        <h1 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tighter">{t.welcome}</h1>
+                        <div className="flex items-center gap-2 mt-1">
+                            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">AI Teacher Online</span>
                         </div>
-                    )}
-
-                    {step > 0 && (
-                        <div className="mb-8 sm:mb-10 relative">
-                            <div className="h-1.5 w-full bg-slate-100 dark:bg-charcoal-800 rounded-full overflow-hidden">
-                                <div
-                                    className="h-full bg-indigo-500 transition-all duration-700 ease-out"
-                                    style={{ width: `${(step / totalSteps) * 100}%` }}
-                                />
-                            </div>
-                            <div className="flex justify-between mt-4">
-                                {[1, 2, 3, 4, 5].map(s => (
-                                    <div key={s} className={`flex items-center space-x-1 ${step === s ? 'text-indigo-500' : 'text-slate-400'}`}>
-                                        <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[8px] sm:text-[10px] font-black border-2 transition-colors ${step >= s ? 'bg-indigo-500 border-indigo-500 text-white' : 'border-slate-200 dark:border-charcoal-700'}`}>
-                                            {s}
-                                        </div>
-                                        <span className="hidden md:inline text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-nowrap">
-                                            {t.stepLabels[s - 1]}
-                                        </span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    <div className={step === 0 ? "w-full" : "min-h-[380px] sm:min-h-[420px]"}>
-                        {renderStep()}
                     </div>
+                    <div className="w-10 h-10 rounded-2xl bg-indigo-500 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+                        <span className="text-xl">🎓</span>
+                    </div>
+                </div>
+            </div>
 
-                    {step > 0 && (
-                        <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-center justify-between space-y-4 sm:space-y-0">
-                            <button
-                                onClick={prevStep}
-                                className={`px-6 sm:px-8 py-3 sm:py-4 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all w-full sm:w-auto text-slate-500 hover:bg-slate-50 dark:hover:bg-charcoal-800`}
-                            >
-                                {t.back}
-                            </button>
+            {/* Chat Body */}
+            <div
+                ref={scrollRef}
+                className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 custom-scrollbar"
+            >
+                <div className="max-w-3xl mx-auto space-y-4">
+                    {messages.map(m => (
+                        <div key={m.id} className={`flex ${m.role === 'AI' ? 'justify-start' : 'justify-end'} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
+                            <div className={`max-w-[85%] sm:max-w-[80%] p-4 rounded-3xl font-bold text-sm sm:text-base ${m.role === 'AI'
+                                ? 'bg-white dark:bg-charcoal-800 text-slate-800 dark:text-slate-200 rounded-tl-none shadow-sm border border-slate-100 dark:border-white/5'
+                                : 'bg-indigo-500 text-white rounded-tr-none shadow-lg shadow-indigo-500/20'
+                                }`}>
+                                {m.text}
+                            </div>
+                        </div>
+                    ))}
 
-                            <div className="flex items-center space-x-3 sm:space-x-4 w-full sm:w-auto">
-                                <button
-                                    onClick={() => setShowHelpline(!showHelpline)}
-                                    className={`w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center transition-all flex-shrink-0 ${showHelpline ? 'bg-indigo-500 text-white shadow-lg' : 'bg-slate-100 dark:bg-charcoal-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'}`}
-                                    title="Ask AI for help"
-                                >
-                                    <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                </button>
-
-                                {step < totalSteps ? (
-                                    <button
-                                        onClick={nextStep}
-                                        className="px-8 sm:px-12 py-3 sm:py-4 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl sm:rounded-2xl text-[10px] sm:text-xs font-black uppercase tracking-widest shadow-xl shadow-indigo-500/20 active:scale-95 transition-all flex-1 sm:flex-none"
-                                    >
-                                        {t.next}
-                                    </button>
-                                ) : (
-                                    <button
-                                        onClick={handleSubmit}
-                                        disabled={isSubmitting}
-                                        className="px-8 sm:px-12 py-3 sm:py-4 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl sm:rounded-2xl text-[10px] sm:text-xs font-black uppercase tracking-widest shadow-xl shadow-emerald-500/20 active:scale-95 transition-all flex items-center justify-center flex-1 sm:flex-none"
-                                    >
-                                        {isSubmitting ? (
-                                            <>
-                                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2 sm:mr-3"></div>
-                                                {t.analyzing}
-                                            </>
-                                        ) : t.analyze}
-                                    </button>
-                                )}
+                    {isTyping && (
+                        <div className="flex justify-start">
+                            <div className="bg-white dark:bg-charcoal-800 p-4 rounded-3xl rounded-tl-none shadow-sm border border-slate-100 dark:border-white/5 flex gap-1">
+                                <div className="w-2 h-2 bg-slate-300 rounded-full animate-bounce"></div>
+                                <div className="w-2 h-2 bg-slate-300 rounded-full animate-bounce [animation-delay:-.15s]"></div>
+                                <div className="w-2 h-2 bg-slate-300 rounded-full animate-bounce [animation-delay:-.3s]"></div>
                             </div>
                         </div>
                     )}
                 </div>
             </div>
 
-            {step > 0 && (
-                <div className={`fixed top-0 right-0 h-full w-full sm:w-[380px] bg-slate-50 dark:bg-charcoal-900 border-l border-slate-100 dark:border-white/5 shadow-2xl transition-transform duration-500 z-50 ${showHelpline ? 'translate-x-0' : 'translate-x-full'}`}>
-                    <div className="h-full flex flex-col">
-                        <div className="p-6 sm:p-8 border-b border-slate-100 dark:border-white/5 flex items-center justify-between">
-                            <div>
-                                <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white uppercase tracking-tighter">{t.helpline}</h3>
-                                <p className="text-[8px] sm:text-[10px] font-bold text-indigo-500 uppercase tracking-widest">{t.helpline_sub}</p>
-                            </div>
-                            <button onClick={() => setShowHelpline(false)} className="p-2 hover:bg-slate-200 dark:hover:bg-charcoal-800 rounded-xl transition-colors">
-                                <svg className="w-5 h-5 sm:w-6 sm:h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </div>
+            {/* Input Footer */}
+            <div className="bg-white/50 dark:bg-charcoal-900/50 backdrop-blur-xl border-t border-slate-100 dark:border-white/5 min-h-[100px] pb-6">
+                <div className="max-w-3xl mx-auto w-full flex flex-col justify-end">
+                    {renderInput()}
 
-                        <div className="flex-1 overflow-y-auto p-6 sm:p-8 space-y-6 custom-scrollbar pb-32">
-                            {helplineResponse ? (
-                                <div className="bg-white dark:bg-charcoal-800 p-5 sm:p-6 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm">
-                                    <p className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 leading-relaxed italic">
-                                        "{helplineResponse}"
-                                    </p>
-                                </div>
-                            ) : (
-                                <div className="text-center py-10 sm:py-20">
-                                    <div className="text-3xl sm:text-4xl mb-4 opacity-20">🤖</div>
-                                    <p className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest">How can I help you?</p>
-                                </div>
-                            )}
-                            {isLoadingHelp && (
-                                <div className="flex justify-center py-4">
-                                    <div className="w-8 h-8 border-4 border-indigo-100 border-t-indigo-500 rounded-full animate-spin"></div>
-                                </div>
-                            )}
+                    {isSubmitting && (
+                        <div className="p-8 flex flex-col items-center justify-center animate-pulse">
+                            <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+                            <p className="text-sm font-black text-indigo-500 uppercase tracking-widest">{t.analyzing}</p>
                         </div>
-
-                        <div className="p-6 sm:p-8 bg-white dark:bg-charcoal-800 border-t border-slate-100 dark:border-white/5 fixed bottom-0 left-0 right-0 sm:relative">
-                            <div className="relative">
-                                <textarea
-                                    className="w-full bg-slate-50 dark:bg-charcoal-900 border-2 border-slate-100 dark:border-white/5 rounded-2xl p-4 pr-12 sm:pr-14 text-xs sm:text-sm font-bold text-slate-900 dark:text-white focus:border-indigo-500 outline-none h-24 sm:h-32 resize-none"
-                                    placeholder={t.helpline_placeholder}
-                                    value={helplineQuery}
-                                    onChange={e => setHelplineQuery(e.target.value)}
-                                    onKeyPress={e => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleHelp())}
-                                />
-                                <button
-                                    onClick={handleHelp}
-                                    disabled={isLoadingHelp || !helplineQuery.trim()}
-                                    className="absolute bottom-4 right-4 bg-indigo-500 text-white p-2 sm:p-3 rounded-xl hover:bg-indigo-600 transition-all shadow-lg active:scale-95 disabled:opacity-50"
-                                >
-                                    <svg className="w-4 h-4 sm:w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                                    </svg>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+                    )}
                 </div>
-            )}
+            </div>
+
+            <style dangerouslySetInnerHTML={{
+                __html: `
+                .chip-btn {
+                    padding: 0.6rem 1.25rem;
+                    background: #f1f5f9;
+                    border: none;
+                    border-radius: 9999px;
+                    font-size: 0.875rem;
+                    font-weight: 700;
+                    color: #475569;
+                    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                    cursor: pointer;
+                }
+                .dark .chip-btn {
+                    background: #2D333B;
+                    color: #94A3B8;
+                }
+                .chip-btn:hover {
+                    background: #e2e8f0;
+                    color: #6366F1;
+                }
+                .dark .chip-btn:hover {
+                    background: #3d444d;
+                }
+                .chip-active {
+                    background: #6366F1 !important;
+                    border-color: #6366F1 !important;
+                    color: white !important;
+                    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+                }
+                .custom-scrollbar::-webkit-scrollbar {
+                    width: 6px;
+                }
+                .custom-scrollbar::-webkit-scrollbar-track {
+                    background: transparent;
+                }
+                .custom-scrollbar::-webkit-scrollbar-thumb {
+                    background: #E2E8F0;
+                    border-radius: 10px;
+                }
+                .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+                    background: #2D333B;
+                }
+            `}} />
         </div>
     );
 };

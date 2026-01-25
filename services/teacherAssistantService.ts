@@ -14,6 +14,7 @@ export interface StudentProfile {
     grade: string;
     name: string;
     difficulty_types?: ('MEMORY' | 'UNDERSTANDING' | 'QUESTION_FORMULATION' | 'PRACTICE')[];
+    study_obstacles?: string[];
     stuck_strategy?: 'RE_READ' | 'ASK' | 'SKIP' | 'SEARCH';
     most_helpful_format?: 'ANALOGIES' | 'QA' | 'SUMMARY' | 'RE_EXPLAIN';
     ai_primary_goal?: 'RE_EXPLAIN' | 'SIMPLIFY' | 'DOUBT_CLEAR' | 'HOMEWORK';
@@ -48,6 +49,7 @@ SCHEMA:
   "grade": string,
   "name": string,
   "difficulty_types": ("MEMORY" | "UNDERSTANDING" | "QUESTION_FORMULATION" | "PRACTICE")[],
+  "study_obstacles": string[],
   "stuck_strategy": "RE_READ" | "ASK" | "SKIP" | "SEARCH",
   "most_helpful_format": "ANALOGIES" | "QA" | "SUMMARY" | "RE_EXPLAIN",
   "ai_primary_goal": "RE_EXPLAIN" | "SIMPLIFY" | "DOUBT_CLEAR" | "HOMEWORK",
@@ -76,6 +78,7 @@ RULES:
 7. Identity: Start your first response of a session with a personalized greeting. Example: "Jai Shree Krishna ${profile.name || ''}! How can I help you today?".
 8. Language Preference: All responses must respect the student's language preference. If it's GUJARATI, use Gujarati for the greeting as well.
 9. Avoid Generic Help: Never say "I don't know your grade" or "I don't know your name" if the data is present in the profile. If name is missing, simply omit it and address them as "Student".
+10. Obstacles Awareness: If the student has specific obstacles like "${(profile.study_obstacles || []).join(', ')}", pay extra attention to those areas (e.g., if they struggle with MATH_SUMS, provide more worked examples).
 `;
 
 const PROFILE_UPDATER_PROMPT = (profile: StudentProfile, summary: string) => `
@@ -92,14 +95,6 @@ RULES:
 6. No new fields. No extra text.
 
 Example Output: {"confidence_level": 85, "profile_evidence": ["Showed strong grasp of quadratic formula."]}
-`;
-
-const ONBOARDING_HELPLINE_PROMPT = `
-You are an AI Assistant helping a student complete their onboarding for an AI Study Solver app.
-Your goal is to explain what each question means and WHY we are asking it.
-Use a friendly, encouraging tone. Keep answers concise.
-If they ask something unrelated to onboarding, politely guide them back to the form.
-Language: Preferred Gujarati/Hindi/English mix as appropriate for the user.
 `;
 
 export const TeacherAssistantService = {
@@ -158,8 +153,7 @@ export const TeacherAssistantService = {
         const profile = await this.getProfile(uid);
         if (!profile) throw new Error("Profile not found");
 
-        // Fetch last session summary (simplified: just use empty string for now or fetch from Firestore)
-        const summary = ""; // Ideally fetched from tutoring_sessions/{uid}/sessions/{sessionId}
+        const summary = "";
 
         const systemInstruction = TUTOR_SYSTEM_PROMPT(profile, summary);
 
@@ -207,19 +201,5 @@ export const TeacherAssistantService = {
                 session_id: sessionId
             });
         }
-    },
-
-    /**
-     * Get help during onboarding
-     */
-    async getOnboardingHelp(questionContext: string, userQuery: string) {
-        const result = await genAI.models.generateContent({
-            model: "gemini-3-pro-preview",
-            contents: [
-                { role: 'user', parts: [{ text: ONBOARDING_HELPLINE_PROMPT }] },
-                { role: 'user', parts: [{ text: `CONTEXT: The student is looking at this part of the form: "${questionContext}"\nSTUDENT QUESTION: ${userQuery}` }] }
-            ]
-        });
-        return result.text || "";
     }
 };
