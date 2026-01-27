@@ -261,7 +261,7 @@ const AdminPanelScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">Global AI Personality</h3>
                 <textarea
                   className="w-full h-32 bg-white dark:bg-charcoal-900 border border-slate-100 dark:border-white/5 rounded-3xl p-6 text-sm font-medium dark:text-white outline-none focus:ring-4 focus:ring-indigo-500/10 resize-none"
-                  placeholder="Global teacher instructions..."
+                  placeholder="Global assistant instructions..."
                 />
               </div>
               <button className="w-full py-5 bg-indigo-500 text-white rounded-3xl text-[10px] font-black uppercase tracking-[0.3em] shadow-xl shadow-indigo-500/20 active:scale-95 transition-all">Synchronize Global Settings</button>

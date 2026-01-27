@@ -18,7 +18,7 @@ const API_KEY = process.env.GEMINI_API_KEY;
 
 // Recreating the helper for system instructions
 const getSystemInstruction = (grade?: string, complexity: 'EASY' | 'HARD' = 'HARD') => {
-    const baseIdentity = `You are "AI Study Solver", a helpful and intelligent AI Teacher.`;
+    const baseIdentity = `You are "AI Study Solver", a helpful and intelligent AI Assistant.`;
     const languageRule = `LANGUAGE RULE: Always respond in the SAME LANGUAGE that the user uses. If they ask in Gujarati, reply in Gujarati. If they ask in Hindi, reply in Hindi.`;
 
     if (complexity === 'EASY') {
@@ -227,18 +227,26 @@ export const callGemini = onCall({ cors: true }, async (request) => {
 
         } else if (action === "getTutoringResponse") {
             const { systemInstruction, history, message, docText } = payload;
-            const contents: any[] = [
-                { role: 'user', parts: [{ text: systemInstruction }] },
-                ...(history || []).slice(-15).map((m: any) => ({
-                    role: m.role === 'user' ? 'user' : 'model',
-                    parts: [{ text: m.text }]
-                })),
-                { role: 'user', parts: [{ text: `${message}${docText ? `\n\nExtracted Doc Text:\n${docText}` : ""}` }] }
-            ];
+
+            // Map history correctly, excluding any previous system instruction hacks
+            const contents: any[] = (history || []).slice(-15).map((m: any) => ({
+                role: m.role === 'user' ? 'user' : 'model',
+                parts: [{ text: m.text }]
+            }));
+
+            // Add latest message
+            contents.push({
+                role: 'user',
+                parts: [{ text: `${message}${docText ? `\n\nExtracted Doc Text:\n${docText}` : ""}` }]
+            });
 
             const response = await ai.models.generateContent({
                 model: "gemini-2.0-flash",
-                contents: contents
+                contents: contents,
+                config: {
+                    systemInstruction: systemInstruction,
+                    temperature: 0.7
+                }
             });
             return { text: response.text || "Sorry, I couldn't generate a response." };
 

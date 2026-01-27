@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { TeacherAssistantService, StudentProfile } from '../services/teacherAssistantService';
+import { AIAssistantService, StudentProfile } from '../services/teacherAssistantService';
 
 interface OnboardingFormProps {
     uid: string;
@@ -15,14 +15,14 @@ interface ChatMessage {
 
 const TRANSLATIONS = {
     GUJARATI: {
-        welcome: "તમારા પર્સનલ AI ટીચર સાથે વાત કરો",
-        intro: "નમસ્તે! હું તમારો નવો AI ટીચર છું. તમારો શ્રેષ્ઠ અભ્યાસ અનુભવ બનાવવા માટે મારે તમારી થોડી વિગતો જોઈએ છે.",
+        welcome: "તમારા પર્સનલ AI આસિસ્ટન્ટ સાથે વાત કરો",
+        intro: "નમસ્તે! હું તમારો નવો AI આસિસ્ટન્ટ છું. તમારો શ્રેષ્ઠ અભ્યાસ અનુભવ બનાવવા માટે મારે તમારી થોડી વિગતો જોઈએ છે.",
         analyzing: "તમારી પ્રોફાઇલ તૈયાર થઈ રહી છે...",
         q1: "૧. તમારું પૂરું નામ શું છે?",
         q2: "૨. તમે કયા ધોરણમાં ભણો છો?",
         q3: "૩. તમે કેવી રીતે ભણવાનું વધારે પસંદ કરો છો? (લર્નિંગ સ્ટાઇલ)",
         q4: "૪. તમે કઈ ભાષામાં વાત કરવા માંગો છો?",
-        q5: "૫. તમારે ટીચરનો સ્વભાવ કેવો જોઈએ છે?",
+        q5: "૫. તમારે આસિસ્ટન્ટનો સ્વભાવ કેવો જોઈએ છે?",
         q6: "૬. ભણતી વખતે કઈ મુશ્કેલી વધારે આવે છે?",
         q7: "૭. જો કોઈ ટોપિકમાં અટકો, તો તમે શું કરો છો?",
         q8: "૮. તમને સૌથી વધારે મદદ શેનાથી મળે છે?",
@@ -41,14 +41,14 @@ const TRANSLATIONS = {
         obstacles: { MATH_SUMS: '🔢 Sums માં', UNDERSTANDING: '🤯 સમજવામાં', READING_WRITING: '✍️ લખવામાં', MEMORY: '🧠 યાદ રાખવામાં', ALL: '😅 બધું જ' }
     },
     HINDI: {
-        welcome: "अपने पर्सनल AI टीचर से बात करें",
-        intro: "नमस्ते! मैं आपका नया AI टीचर हूँ। आपकी पढ़ाई को बेहतर बनाने के लिए मुझे आपकी कुछ जानकारी चाहिए।",
+        welcome: "अपने पर्सनल AI असिस्टेंट से बात करें",
+        intro: "नमस्ते! मैं आपका नया AI असिस्टेंट हूँ। आपकी पढ़ाई को बेहतर बनाने के लिए मुझे आपकी कुछ जानकारी चाहिए।",
         analyzing: "आपकी प्रोफ़ाइल तैयार हो रही है...",
         q1: "1. आपका पूरा नाम क्या है?",
         q2: "2. आप कौन सी कक्षा में पढ़ते हैं?",
         q3: "3. आप कैसे पढ़ना पसंद करते हैं? (लर्निंग स्टाइल)",
         q4: "4. आप किस भाषा में बात करना चाहते हैं?",
-        q5: "5. टीचर का स्वभाव कैसा होना चाहिए?",
+        q5: "5. असिस्टेंट का स्वभाव कैसा होना चाहिए?",
         q6: "6. पढ़ते समय क्या समस्या आती है?",
         q7: "7. यदि आप अटक जाते हैं, तो क्या करते हैं?",
         q8: "8. आपको सबसे ज्यादा मदद किससे मिलती है?",
@@ -67,14 +67,14 @@ const TRANSLATIONS = {
         obstacles: { MATH_SUMS: '🔢 सवाल हल करना', UNDERSTANDING: '🤯 समझने में', READING_WRITING: '✍️ लिखने में', MEMORY: '🧠 याद रखने में', ALL: '😅 सब में' }
     },
     ENGLISH: {
-        welcome: "Chat with your AI Teacher",
-        intro: "Hi! I'm your new AI Teacher. To give you the best learning experience, I'd like to know a bit about you.",
+        welcome: "Chat with your AI Assistant",
+        intro: "Hi! I'm your new AI Assistant. To give you the best learning experience, I'd like to know a bit about you.",
         analyzing: "Creating your profile...",
         q1: "1. What is your full name?",
         q2: "2. Which grade are you in?",
         q3: "3. How do you like to learn new topics?",
         q4: "4. Which language do you prefer?",
-        q5: "5. What should my teaching tone be?",
+        q5: "5. What should my assistant tone be?",
         q6: "6. What is your main study difficulty?",
         q7: "7. What do you do when you're stuck?",
         q8: "8. What helps you the most while studying?",
@@ -106,10 +106,11 @@ const GRADES = ["5", "6", "7", "8", "9", "10", "11", "12", "Other"];
 const OnboardingForm: React.FC<OnboardingFormProps> = ({ uid, onComplete }) => {
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [currentStep, setCurrentStep] = useState(-1); // -1 = Lang selection
-    const [uiLanguage, setUiLanguage] = useState<'GUJARATI' | 'HINDI' | 'ENGLISH'>('GUJARATI');
+    const [uiLanguage, setUiLanguage] = useState<'GUJARATI' | 'HINDI' | 'ENGLISH'>('ENGLISH');
     const [isTyping, setIsTyping] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [tempSelections, setTempSelections] = useState<string[]>([]);
+    const hasInitialized = useRef(false);
 
     // Form Data State
     const [formData, setFormData] = useState({
@@ -126,7 +127,7 @@ const OnboardingForm: React.FC<OnboardingFormProps> = ({ uid, onComplete }) => {
     });
 
     const scrollRef = useRef<HTMLDivElement>(null);
-    const t = TRANSLATIONS[uiLanguage] || TRANSLATIONS.GUJARATI;
+    const t = TRANSLATIONS[uiLanguage] || TRANSLATIONS.ENGLISH;
 
     // Auto scroll to bottom
     useEffect(() => {
@@ -137,21 +138,23 @@ const OnboardingForm: React.FC<OnboardingFormProps> = ({ uid, onComplete }) => {
 
     // Initial Message
     useEffect(() => {
-        if (currentStep === -1) {
-            addAIMessage("👋 નમસ્તે! તમારી ભાષા પસંદ કરો / Select your language:");
+        if (currentStep === -1 && !hasInitialized.current) {
+            hasInitialized.current = true;
+            addAIMessage("👋 Welcome! Please select your language to continue:");
         }
     }, []);
 
-    const addAIMessage = (text: string) => {
+    const addAIMessage = (text: string, onDone?: () => void) => {
         setIsTyping(true);
         setTimeout(() => {
-            setMessages(prev => [...prev, { id: Date.now().toString(), role: 'AI', text }]);
+            setMessages(prev => [...prev, { id: `ai-${Date.now()}-${Math.random()}`, role: 'AI', text }]);
             setIsTyping(false);
+            if (onDone) onDone();
         }, 1000);
     };
 
     const addUserMessage = (text: string) => {
-        setMessages(prev => [...prev, { id: Date.now().toString() + 'u', role: 'USER', text }]);
+        setMessages(prev => [...prev, { id: `user-${Date.now()}-${Math.random()}`, role: 'USER', text }]);
     };
 
     const toggleMultiSelect = (id: string, field: 'styles' | 'difficulties' | 'obstacles') => {
@@ -172,29 +175,33 @@ const OnboardingForm: React.FC<OnboardingFormProps> = ({ uid, onComplete }) => {
         addUserMessage(UI_LANGUAGES.find(l => l.id === lang)?.label || lang);
 
         setTimeout(() => {
-            addAIMessage(TRANSLATIONS[actualLang].intro);
-            setTimeout(() => {
-                addAIMessage(TRANSLATIONS[actualLang].q1);
-                setCurrentStep(1);
-            }, 1200);
-        }, 800);
+            addAIMessage(TRANSLATIONS[actualLang].intro, () => {
+                setTimeout(() => {
+                    addAIMessage(TRANSLATIONS[actualLang].q1, () => {
+                        setCurrentStep(1);
+                    });
+                }, 500);
+            });
+        }, 400);
     };
 
     const handleNext = (val: any, label: string) => {
+        if (isTyping || isSubmitting) return;
         addUserMessage(label);
 
-        // Update Step & AI Response
+        // Update AI Response first
         const nextStep = currentStep + 1;
-        setCurrentStep(nextStep);
 
         setTimeout(() => {
             if (nextStep <= 10) {
-                addAIMessage((t as any)[`q${nextStep}`]);
+                addAIMessage((t as any)[`q${nextStep}`], () => {
+                    setCurrentStep(nextStep);
+                });
             } else {
                 addAIMessage(t.analyzing);
                 finalizeOnboarding({ ...formData });
             }
-        }, 1000);
+        }, 500);
     };
 
     const finalizeOnboarding = async (data: any) => {
@@ -212,11 +219,11 @@ const OnboardingForm: React.FC<OnboardingFormProps> = ({ uid, onComplete }) => {
                 { q: "9. Goal", a: data.aiGoal },
                 { q: "10. Obstacles", a: data.obstacles.join(", ") }
             ];
-            const profile = await TeacherAssistantService.completeOnboarding(uid, answers, { name: data.name, grade: data.grade });
+            const profile = await AIAssistantService.completeOnboarding(uid, answers, { name: data.name, grade: data.grade });
             onComplete(profile);
         } catch (e) {
             console.error(e);
-            alert("Submission error. Try again.");
+            addAIMessage("Sorry, there was an error saving your profile. Please try again.");
             setIsSubmitting(false);
         }
     };
@@ -442,7 +449,7 @@ const OnboardingForm: React.FC<OnboardingFormProps> = ({ uid, onComplete }) => {
                         <h1 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tighter">{t.welcome}</h1>
                         <div className="flex items-center gap-2 mt-1">
                             <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">AI Teacher Online</span>
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">AI Assistant Online</span>
                         </div>
                     </div>
                     <div className="w-10 h-10 rounded-2xl bg-indigo-500 flex items-center justify-center shadow-lg shadow-indigo-500/30">

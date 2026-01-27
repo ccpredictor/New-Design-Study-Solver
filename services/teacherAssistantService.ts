@@ -62,7 +62,7 @@ Output: Strict JSON ONLY. No markdown, no extra text.
 `;
 
 const TUTOR_SYSTEM_PROMPT = (profile: StudentProfile, summary: string) => `
-You are a personalized AI Teacher.
+You are a personalized AI Assistant.
 STUDENT PROFILE: ${JSON.stringify(profile)}
 SESSION SUMMARY: ${summary}
 
@@ -99,7 +99,7 @@ RULES:
 Example Output: {"confidence_level": 85, "profile_evidence": ["Showed strong grasp of quadratic formula."]}
 `;
 
-export const TeacherAssistantService = {
+export const AIAssistantService = {
     /**
      * Check if profile exists
      */
@@ -168,7 +168,7 @@ export const TeacherAssistantService = {
             return (result.data as any).text || "";
         } catch (error) {
             console.error("Error in getTutoringResponse:", error);
-            return "Sorry, I am having trouble connecting to my teaching tools.";
+            return "Sorry, I am having trouble connecting to my assistant tools.";
         }
     },
 

@@ -16,7 +16,7 @@ import AdminPanelScreen from './AdminPanelScreen';
 import DashboardScreen from './DashboardScreen';
 import CustomModal from '../components/CustomModal';
 import OnboardingForm from '../components/OnboardingForm';
-import { TeacherAssistantService, StudentProfile } from '../services/teacherAssistantService';
+import { AIAssistantService, StudentProfile } from '../services/teacherAssistantService';
 
 interface ChatSession {
   id: string;
@@ -76,7 +76,7 @@ const StudySolverScreen: React.FC = () => {
       workflow: {
         title: 'Workspace | AI Study Solver',
         desc: 'Solve complex problems with step-by-step Socratic guidance using Gemini 3.0 Pro.',
-        keywords: 'math solver, physics logic, socratic tutor, AI teacher, science helper'
+        keywords: 'math solver, physics logic, socratic tutor, AI assistant, science helper'
       },
       review: {
         title: 'History | AI Study Solver',
@@ -145,7 +145,7 @@ const StudySolverScreen: React.FC = () => {
     // Check for Student Profile
     const checkProfile = async () => {
       setOnboardingLoading(true);
-      const profile = await TeacherAssistantService.getProfile(user.uid);
+      const profile = await AIAssistantService.getProfile(user.uid);
       if (profile) {
         setStudentProfile(profile);
         setShowOnboarding(false);
@@ -344,7 +344,7 @@ const StudySolverScreen: React.FC = () => {
   };
 
   const handleSendMessage = async () => {
-    if ((!inputText.trim() && !selectedImage) || !user) return;
+    if ((!inputText.trim() && !selectedImage) || !user || chat.isLoading) return;
     setChat(prev => ({ ...prev, isLoading: true, error: null }));
 
     const currentInput = inputText;
@@ -418,13 +418,13 @@ const StudySolverScreen: React.FC = () => {
         let result;
         if (studentProfile && !activeChannelId) {
           // Use Teacher Assistant Logic (Profile-aware)
-          const aiResponse = await TeacherAssistantService.getTutoringResponse(
+          const aiResponse = await AIAssistantService.getTutoringResponse(
             user.uid,
             currentInput,
             historyForModel,
             currentDoc?.text
           );
-          result = { text: aiResponse, tokensUsed: 0, sources: [], metadata: { modelUsed: 'gemini-3-pro-preview', routerTriggered: false } };
+          result = { text: aiResponse, tokensUsed: 0, sources: [], metadata: { modelUsed: 'gemini-2.0-flash', routerTriggered: false } };
         } else {
           result = await solveProblem(currentInput, historyForModel, currentImg || undefined, userGrade);
         }
@@ -462,7 +462,7 @@ const StudySolverScreen: React.FC = () => {
 
       // If we have a profile and it's a private chat, check if session should end (simplified: after 10 messages)
       if (studentProfile && !activeChannelId && chat.messages.length >= 10) {
-        await TeacherAssistantService.updateProfile(user.uid, activeChatId || "default", "Progressing through concepts.");
+        await AIAssistantService.updateProfile(user.uid, activeChatId || "default", "Progressing through concepts.");
       }
 
       const userUpdate: any = {
@@ -597,7 +597,7 @@ const StudySolverScreen: React.FC = () => {
                   <button
                     onClick={async () => {
                       if (confirm("End this session and update your learning profile?")) {
-                        await TeacherAssistantService.updateProfile(user.uid, activeChatId, "Session ended by student.");
+                        await AIAssistantService.updateProfile(user.uid, activeChatId, "Session ended by student.");
                         alert("Profile updated with new insights!");
                       }
                     }}
