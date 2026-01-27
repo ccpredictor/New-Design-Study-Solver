@@ -606,12 +606,12 @@ const StudySolverScreen: React.FC = () => {
               <div className="max-w-3xl mx-auto space-y-6 pb-24 md:pb-12">
                 {chat.messages.length === 0 && (
                   <div className="flex flex-col items-center justify-center py-20 text-center">
-                    <div className="w-16 h-16 bg-indigo-500/10 text-indigo-500 rounded-3xl flex items-center justify-center mb-6">
-                      <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+                    <div className="w-20 h-20 mb-6 flex items-center justify-center">
+                      <img src="/ai-study.png" alt="AI Study Solver Logo" className="w-full h-full object-contain" />
                     </div>
-                    <h2 className="text-2xl font-black text-slate-800 dark:text-white uppercase tracking-tight mb-2">Academic Workspace</h2>
+                    <h2 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight mb-2">Not just learning — mastering the subject.</h2>
                     <p className="text-slate-400 dark:text-slate-500 font-medium max-w-sm">
-                      {activeChannelData ? `Welcome to ${activeChannelData.name}. Collaborate with your peers.` : 'Start a guided private lesson now.'}
+                      Private guidance. Clear concepts. Real results.
                     </p>
                   </div>
                 )}
