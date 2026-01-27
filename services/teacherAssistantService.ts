@@ -162,7 +162,7 @@ export const TeacherAssistantService = {
             model: "gemini-3-pro-preview",
             contents: [
                 { role: 'user', parts: [{ text: systemInstruction }] },
-                ...history.map(m => ({
+                ...history.slice(-15).map(m => ({
                     role: m.role === 'user' ? 'user' : 'model',
                     parts: [{ text: m.text }]
                 })),
