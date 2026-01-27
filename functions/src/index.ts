@@ -215,6 +215,41 @@ export const callGemini = onCall({ cors: true }, async (request) => {
                 contents: prompt,
             });
             return { text: response.text || "Not enough data." };
+
+        } else if (action === "completeOnboarding") {
+            const { answers, promptTemplate } = payload;
+            const response = await ai.models.generateContent({
+                model: "gemini-2.0-flash",
+                contents: [{ role: 'user', parts: [{ text: `${promptTemplate}\n\nSTUDENT RESPONSES:\n${JSON.stringify(answers)}` }] }],
+                config: { responseMimeType: "application/json" }
+            });
+            return { text: response.text || "{}" };
+
+        } else if (action === "getTutoringResponse") {
+            const { systemInstruction, history, message, docText } = payload;
+            const contents: any[] = [
+                { role: 'user', parts: [{ text: systemInstruction }] },
+                ...(history || []).slice(-15).map((m: any) => ({
+                    role: m.role === 'user' ? 'user' : 'model',
+                    parts: [{ text: m.text }]
+                })),
+                { role: 'user', parts: [{ text: `${message}${docText ? `\n\nExtracted Doc Text:\n${docText}` : ""}` }] }
+            ];
+
+            const response = await ai.models.generateContent({
+                model: "gemini-2.0-flash",
+                contents: contents
+            });
+            return { text: response.text || "Sorry, I couldn't generate a response." };
+
+        } else if (action === "updateProfile") {
+            const { promptTemplate } = payload;
+            const response = await ai.models.generateContent({
+                model: "gemini-2.0-flash",
+                contents: [{ role: 'user', parts: [{ text: promptTemplate }] }],
+                config: { responseMimeType: "application/json" }
+            });
+            return { text: response.text || "{}" };
         }
 
         throw new HttpsError('invalid-argument', `Unknown action: ${action}`);

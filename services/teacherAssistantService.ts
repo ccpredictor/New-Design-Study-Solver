@@ -1,9 +1,11 @@
-import { GoogleGenAI } from "@google/genai";
 import { db } from "./firebase";
-import { doc, getDoc, setDoc, updateDoc, addDoc, collection, query, orderBy, limit, getDocs } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc, addDoc, collection } from "firebase/firestore";
+import { getFunctions, httpsCallable } from "firebase/functions";
+import { getApp } from "firebase/app";
 
-// The API Key is coming from environment variables
-const genAI = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY || "" });
+// Initialize Firebase Functions
+const functions = getFunctions(getApp());
+const callGeminiFunction = httpsCallable(functions, 'callGemini');
 
 export interface StudentProfile {
     preferred_explanation_styles: ('EXAMPLE' | 'STEP_BY_STEP' | 'SHORT' | 'DETAILED')[];
@@ -111,39 +113,41 @@ export const TeacherAssistantService = {
      * Analyze onboarding responses and save profile
      */
     async completeOnboarding(uid: string, answers: { q: string, a: string }[], explicitData: { name: string, grade: string }) {
-        // 1. Analyze with Gemini
-        const result = await genAI.models.generateContent({
-            model: "gemini-3-pro-preview",
-            contents: [{ role: 'user', parts: [{ text: `${ONBOARDING_ANALYZER_PROMPT}\n\nSTUDENT RESPONSES:\n${JSON.stringify(answers)}` }] }],
-            config: { responseMimeType: "application/json" }
-        });
-        const profileData = extractJson(result.text || "{}");
-        if (!profileData) throw new Error("Could not parse learning profile.");
+        try {
+            const result = await callGeminiFunction({
+                action: 'completeOnboarding',
+                payload: { answers, promptTemplate: ONBOARDING_ANALYZER_PROMPT }
+            });
 
-        // 2. Validate and Save (Prioritize explicit data for critical fields)
-        const profile: StudentProfile = {
-            preferred_explanation_styles: profileData.preferred_explanation_styles || ['STEP_BY_STEP'],
-            language_preference: profileData.language_preference || 'GUJARATI',
-            tone_preference: profileData.tone_preference || 'FRIENDLY',
-            confidence_level: 70, // Default if not asked
-            question_hesitation_level: 30, // Default if not asked
-            ...profileData,
-            name: explicitData.name || profileData.name || "Student",
-            grade: explicitData.grade || profileData.grade || "Unknown",
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            version: 1
-        };
+            const profileData = extractJson((result.data as any).text || "{}");
+            if (!profileData) throw new Error("Could not parse learning profile.");
 
-        await setDoc(doc(db, "student_profiles", uid), profile);
+            const profile: StudentProfile = {
+                preferred_explanation_styles: profileData.preferred_explanation_styles || ['STEP_BY_STEP'],
+                language_preference: profileData.language_preference || 'GUJARATI',
+                tone_preference: profileData.tone_preference || 'FRIENDLY',
+                confidence_level: 70,
+                question_hesitation_level: 30,
+                ...profileData,
+                name: explicitData.name || profileData.name || "Student",
+                grade: explicitData.grade || profileData.grade || "Unknown",
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                version: 1
+            };
 
-        // Store responses for history
-        await addDoc(collection(db, "onboarding_sessions", uid, "responses"), {
-            answers,
-            timestamp: new Date().toISOString()
-        });
+            await setDoc(doc(db, "student_profiles", uid), profile);
 
-        return profile;
+            await addDoc(collection(db, "onboarding_sessions", uid, "responses"), {
+                answers,
+                timestamp: new Date().toISOString()
+            });
+
+            return profile;
+        } catch (error) {
+            console.error("Error in completeOnboarding:", error);
+            throw error;
+        }
     },
 
     /**
@@ -154,23 +158,18 @@ export const TeacherAssistantService = {
         if (!profile) throw new Error("Profile not found");
 
         const summary = "";
-
         const systemInstruction = TUTOR_SYSTEM_PROMPT(profile, summary);
 
-        // Call Gemini
-        const result = await genAI.models.generateContent({
-            model: "gemini-3-pro-preview",
-            contents: [
-                { role: 'user', parts: [{ text: systemInstruction }] },
-                ...history.slice(-15).map(m => ({
-                    role: m.role === 'user' ? 'user' : 'model',
-                    parts: [{ text: m.text }]
-                })),
-                { role: 'user', parts: [{ text: `${message}${docText ? `\n\nExtracted Doc Text:\n${docText}` : ""}` }] }
-            ]
-        });
-
-        return result.text || "";
+        try {
+            const result = await callGeminiFunction({
+                action: 'getTutoringResponse',
+                payload: { systemInstruction, history, message, docText }
+            });
+            return (result.data as any).text || "";
+        } catch (error) {
+            console.error("Error in getTutoringResponse:", error);
+            return "Sorry, I am having trouble connecting to my teaching tools.";
+        }
     },
 
     /**
@@ -180,26 +179,28 @@ export const TeacherAssistantService = {
         const profile = await this.getProfile(uid);
         if (!profile) return;
 
-        const result = await genAI.models.generateContent({
-            model: "gemini-3-pro-preview",
-            contents: [{ role: 'user', parts: [{ text: PROFILE_UPDATER_PROMPT(profile, summary) }] }],
-            config: { responseMimeType: "application/json" }
-        });
-        const patch = extractJson(result.text || "{}");
-
-        if (patch) {
-            // Update profile
-            await updateDoc(doc(db, "student_profiles", uid), {
-                ...patch,
-                updated_at: new Date().toISOString()
+        try {
+            const result = await callGeminiFunction({
+                action: 'updateProfile',
+                payload: { promptTemplate: PROFILE_UPDATER_PROMPT(profile, summary) }
             });
+            const patch = extractJson((result.data as any).text || "{}");
 
-            // Save patch history
-            await addDoc(collection(db, "profile_updates", uid, "patches"), {
-                patch,
-                applied_at: new Date().toISOString(),
-                session_id: sessionId
-            });
+            if (patch) {
+                await updateDoc(doc(db, "student_profiles", uid), {
+                    ...patch,
+                    updated_at: new Date().toISOString()
+                });
+
+                await addDoc(collection(db, "profile_updates", uid, "patches"), {
+                    patch,
+                    applied_at: new Date().toISOString(),
+                    session_id: sessionId
+                });
+            }
+        } catch (error) {
+            console.error("Error in updateProfile:", error);
         }
     }
 };
+
