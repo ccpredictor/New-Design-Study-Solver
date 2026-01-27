@@ -16,7 +16,7 @@ interface ChatMessage {
 const TRANSLATIONS = {
     GUJARATI: {
         welcome: "તમારા પર્સનલ AI આસિસ્ટન્ટ સાથે વાત કરો",
-        intro: "નમસ્તે! હું તમારો નવો AI આસિસ્ટન્ટ છું. તમારો શ્રેષ્ઠ અભ્યાસ અનુભવ બનાવવા માટે મારે તમારી થોડી વિગતો જોઈએ છે.",
+        intro: "Welcome! હું તમારો AI Assistant છું.\n\nહું અહીં તમારું અભ્યાસ સરળ, smart અને વધુ effective બનાવવા માટે છું.\n\nઆ એપમાં તમે:\n• Concepts ને clear રીતે સમજી શકશો\n• પ્રશ્નો અને doubts ને logically solve કરી શકશો\n• Exam preparation ને વધુ structured બનાવી શકશો\n\nશરૂઆત કરતા પહેલાં, હું તમને થોડું સમજવા માગું છું — તમારું goal, તમારો level અને તમને ક્યાં help જોઈએ છે. તમે કયા ધોરણમાં છો ? કયા કયા વિષય તમને સૌથી વધુ challenging લાગે છે?\n\nતમારા જવાબો પરથી હું તમને better guidance આપી શકશો.\n\nચાલો, focused અને confident રીતે આગળ વધીએ",
         analyzing: "તમારી પ્રોફાઇલ તૈયાર થઈ રહી છે...",
         q1: "૧. તમારું પૂરું નામ શું છે?",
         q2: "૨. તમે કયા ધોરણમાં ભણો છો?",
@@ -41,7 +41,7 @@ const TRANSLATIONS = {
     },
     HINDI: {
         welcome: "अपने पर्सनल AI असिस्टेंट से बात करें",
-        intro: "नमस्ते! मैं आपका नया AI असिस्टेंट हूँ। आपकी पढ़ाई को बेहतर बनाने के लिए मुझे आपकी कुछ जानकारी चाहिए।",
+        intro: "Welcome! मैं आपका AI Assistant हूँ।\n\nमैं यहाँ आपकी पढ़ाई को सरल, smart और अधिक effective बनाने के लिए हूँ।\n\nइस ऐप में आप:\n• Concepts को clear तरीके से समझ सकेंगे\n• सवालों और doubts को logically solve कर सकेंगे\n• Exam preparation को अधिक structured बना सकेंगे\n\nशुरुआत करने से पहले, मैं आपको थोड़ा समझना चाहता हूँ — आपका goal, आपका level और आपको कहाँ मदद चाहिए। आप किस कक्षा में हैं? कौन से विषय आपको सबसे अधिक challenging लगते हैं?\n\nआपके जवाबों से मैं आपको better guidance दे पाऊँगा।\n\nचलिए, focused और confident तरीके से आगे बढ़ते हैं।",
         analyzing: "आपकी प्रोफ़ाइल तैयार हो रही है...",
         q1: "1. आपका पूरा नाम क्या है?",
         q2: "2. आप कौन सी कक्षा में पढ़ते हैं?",
@@ -66,7 +66,7 @@ const TRANSLATIONS = {
     },
     ENGLISH: {
         welcome: "Chat with your AI Assistant",
-        intro: "Hi! I'm your new AI Assistant. To give you the best learning experience, I'd like to know a bit about you.",
+        intro: "Welcome! I am your AI Assistant.\n\nI am here to make your studies simpler, smarter, and more effective.\n\nIn this app, you can:\n• Understand concepts clearly\n• Solve questions and doubts logically\n• Make your exam preparation more structured\n\nBefore we begin, I want to understand you a bit — your goals, your level, and where you need help. What grade are you in? Which subjects do you find most challenging?\n\nBased on your answers, I will be able to provide better guidance.\n\nLet's move forward in a focused and confident way!",
         analyzing: "Creating your profile...",
         q1: "1. What is your full name?",
         q2: "2. Which grade are you in?",
@@ -472,7 +472,12 @@ const OnboardingForm: React.FC<OnboardingFormProps> = ({ uid, onComplete }) => {
                                 ? 'bg-white dark:bg-charcoal-800 text-slate-800 dark:text-slate-200 rounded-tl-none shadow-sm border border-slate-100 dark:border-white/5'
                                 : 'bg-indigo-500 text-white rounded-tr-none shadow-lg shadow-indigo-500/20'
                                 }`}>
-                                {m.text}
+                                {m.text.split('\n').map((line, i) => (
+                                    <React.Fragment key={i}>
+                                        {line}
+                                        {i !== m.text.split('\n').length - 1 && <br />}
+                                    </React.Fragment>
+                                ))}
                             </div>
                         </div>
                     ))}
