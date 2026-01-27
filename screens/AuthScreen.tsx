@@ -55,13 +55,13 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onBackToLanding }) => {
       // Attempt Auto-Login
       try {
         const userCredential = await signInWithEmailAndPassword(auth, inv.email, inv.password);
-        await saveUserToFirestore(userCredential.user, 'Guest Tester');
+        await saveUserToFirestore(userCredential.user, 'Guest Tester', undefined, inv.expiresAt);
       } catch (err: any) {
-        if (err.code === 'auth/user-not-found') {
+        if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
           // If user doesn't exist, create it auto
           const userCredential = await createUserWithEmailAndPassword(auth, inv.email, inv.password);
           await updateProfile(userCredential.user, { displayName: 'Guest Tester' });
-          await saveUserToFirestore(userCredential.user, 'Guest Tester', 'Class 10');
+          await saveUserToFirestore(userCredential.user, 'Guest Tester', 'Class 10', inv.expiresAt);
         } else {
           throw err;
         }
@@ -82,19 +82,34 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onBackToLanding }) => {
     "Class 11", "Class 12", "Undergraduate", "Postgraduate", "PhD"
   ];
 
-  const saveUserToFirestore = async (user: any, displayName: string, userGrade?: string) => {
+  const saveUserToFirestore = async (user: any, displayName: string, userGrade?: string, expiresAt?: string) => {
     const userRef = doc(db, 'users', user.uid);
     const userSnap = await getDoc(userRef);
 
-    if (!userSnap.exists()) {
+    const userData: any = {
+      uid: user.uid,
+      displayName: displayName || user.displayName || 'Student',
+      email: user.email,
+      grade: userGrade || 'Class 10',
+      lastLogin: serverTimestamp(),
+      role: 'student'
+    };
+
+    if (expiresAt) {
+      userData.expiresAt = expiresAt;
+    }
+
+    if (userSnap.exists()) {
+      const existingData = userSnap.data();
+      if (existingData.expiresAt && new Date(existingData.expiresAt) < new Date()) {
+        await auth.signOut();
+        throw new Error("This temporary test account has expired. Please contact the administrator.");
+      }
+      await setDoc(userRef, userData, { merge: true });
+    } else {
       await setDoc(userRef, {
-        uid: user.uid,
-        displayName: displayName || user.displayName || 'Student',
-        email: user.email,
-        grade: userGrade || 'Class 10',
+        ...userData,
         createdAt: serverTimestamp(),
-        lastLogin: serverTimestamp(),
-        role: 'student',
         preferences: {
           language: 'English',
           notifications: true
@@ -104,8 +119,6 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onBackToLanding }) => {
           tokensConsumed: 0
         }
       });
-    } else {
-      await setDoc(userRef, { lastLogin: serverTimestamp() }, { merge: true });
     }
   };
 

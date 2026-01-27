@@ -65,6 +65,36 @@ const StudySolverScreen: React.FC = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const user = auth.currentUser;
 
+  // Check for expired sessions (Guest Testers)
+  useEffect(() => {
+    if (!user) return;
+
+    const checkExpiration = async () => {
+      try {
+        const userRef = doc(db, 'users', user.uid);
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists()) {
+          const userData = userSnap.data();
+          if (userData.expiresAt) {
+            const expiryDate = new Date(userData.expiresAt);
+            if (expiryDate < new Date()) {
+              alert("Your temporary test session has expired. Please contact the administrator for a new link.");
+              await auth.signOut();
+              window.location.reload();
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Error checking session expiration:", err);
+      }
+    };
+
+    // Check immediately and then every 2 minutes
+    checkExpiration();
+    const interval = setInterval(checkExpiration, 120000);
+    return () => clearInterval(interval);
+  }, [user]);
+
   // Dynamic Metadata Update based on Active Tab
   useEffect(() => {
     const metaData: Record<string, { title: string; desc: string; keywords: string }> = {
