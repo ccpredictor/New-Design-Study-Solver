@@ -161,7 +161,7 @@ const LandingFeatures: React.FC = () => {
               <span className="text-indigo-400 font-black text-xs uppercase tracking-[0.3em] mb-6 block">The Tech Behind The Magic</span>
               <h3 className="text-4xl md:text-6xl font-black mb-8 leading-none tracking-tighter">Performance At Scale.</h3>
               <p className="text-slate-400 text-lg font-medium leading-relaxed mb-12">
-                Our infrastructure is built on the Gemini 3.0 Pro backbone, ensuring that your queries are processed with the highest fidelity and lowest latency in the industry.
+                Our infrastructure is built on an Advanced AI backbone, ensuring that your queries are processed with the highest fidelity and lowest latency in the industry.
               </p>
               <div className="grid grid-cols-2 gap-10">
                 <StatBlock label="Average Latency" value="1.8s" />

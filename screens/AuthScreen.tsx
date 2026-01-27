@@ -23,8 +23,8 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onBackToLanding }) => {
 
   // Dynamic Metadata and Invite Handler
   useEffect(() => {
-    const title = isLogin ? 'Sign In | AI Study Solver' : 'Create Account | AI Study Solver';
-    const desc = isLogin ? 'Welcome back! Sign in to continue your academic mastery journey.' : 'Join the elite academic community and start solving problems with AI.';
+    const title = isLogin ? 'Sign In | AI Study Solver' : 'Join Us | AI Study Solver';
+    const desc = isLogin ? 'Welcome back! Sign in to continue solving problems.' : 'Join your personal AI Study Assistant and start learning faster.';
 
     document.title = title;
     const descTag = document.querySelector('meta[name="description"]');

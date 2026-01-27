@@ -75,7 +75,7 @@ const StudySolverScreen: React.FC = () => {
       },
       workflow: {
         title: 'Workspace | AI Study Solver',
-        desc: 'Solve complex problems with step-by-step Socratic guidance using Gemini 3.0 Pro.',
+        desc: 'Solve complex problems with step-by-step Socratic guidance using our Advanced AI.',
         keywords: 'math solver, physics logic, socratic tutor, AI assistant, science helper'
       },
       review: {

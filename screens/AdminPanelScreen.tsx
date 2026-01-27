@@ -22,7 +22,7 @@ const AdminPanelScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [systemConfig, setSystemConfig] = useState({
     maintenanceMode: false,
     registrationOpen: true,
-    aiModel: 'gemini-3-pro-preview',
+    aiModel: 'gemini-2.0-flash',
     systemMessage: 'All systems operational.'
   });
 
@@ -177,8 +177,8 @@ const AdminPanelScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 <div className="bg-white dark:bg-charcoal-800 p-8 rounded-[40px] border border-slate-100 dark:border-white/5 shadow-sm">
                   <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-6">Model Distribution (Global)</h3>
                   <div className="space-y-6">
-                    <DistributionRow label="Gemini 3.0 Pro (Hard)" color="bg-indigo-500" percent={(stats.proTokens / (stats.tokensUsed || 1)) * 100} />
-                    <DistributionRow label="Gemini 3.0 Flash (Easy)" color="bg-cyan-400" percent={(stats.flashTokens / (stats.tokensUsed || 1)) * 100} />
+                    <DistributionRow label="Gemini 2.0 Pro (Hard)" color="bg-indigo-500" percent={(stats.proTokens / (stats.tokensUsed || 1)) * 100} />
+                    <DistributionRow label="Gemini 2.0 Flash (Easy)" color="bg-cyan-400" percent={(stats.flashTokens / (stats.tokensUsed || 1)) * 100} />
                   </div>
                 </div>
                 <div className="bg-slate-900 rounded-[40px] p-8 border border-white/5 text-white flex flex-col justify-center text-center">
