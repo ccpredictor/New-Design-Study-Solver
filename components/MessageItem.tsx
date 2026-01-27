@@ -96,49 +96,101 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, chatId, isChannel })
       </div>
     );
   }
+  const checkIsEasy = () => {
+    // 1. Explicit metadata (EASY/HARD)
+    if (message.metadata?.complexity === 'EASY') return true;
+    if (message.metadata?.complexity === 'HARD') return false;
 
-  const responseLang = detectLanguage(message.text);
+    // 2. Local heuristic fallback (for old messages or missing metadata)
+    const text = message.text.toLowerCase();
+    const hardIndicators = [
+      'step 1', 'step 2', 'problem understanding', 'concept used',
+      'solution', 'final answer', 'ટિપ્સ', 'સમજૂતી', 'ઉકેલ',
+      'विवरण', 'अंतिम उत्तर', 'चरण', 'grounding chunks', 'web search'
+    ];
+
+    // If it's short, it's almost certainly EASY
+    if (text.length < 150 && !hardIndicators.some(ind => text.includes(ind))) {
+      return true;
+    }
+
+    // If text has academic headers, it's HARD
+    if (hardIndicators.some(ind => text.includes(ind))) {
+      return false;
+    }
+
+    // Default: If it's reasonably long, show notebook, otherwise bubble
+    return text.length < 250;
+  };
+
+  const isEasy = checkIsEasy();
+
+  // Casual Response UI (Simple Bubble)
+  if (isEasy) {
+    return (
+      <div className="flex flex-col mb-8 px-4 md:px-0 animate-in fade-in slide-in-from-bottom-2 duration-300 group">
+        <div className="max-w-[92%] md:max-w-[85%] bg-white dark:bg-charcoal-800 text-slate-800 dark:text-slate-100 px-5 py-3 rounded-[24px] rounded-tl-none shadow-sm border border-slate-100 dark:border-white/5">
+          <div className="text-[14px] md:text-[16px] leading-relaxed whitespace-pre-wrap">
+            <ReactMarkdown
+              remarkPlugins={[remarkMath]}
+              rehypePlugins={[rehypeKatex]}
+            >
+              {message.text}
+            </ReactMarkdown>
+          </div>
+        </div>
+
+        {/* Actions for easy items */}
+        <div className="mt-2 flex items-center space-x-3 opacity-0 group-hover:opacity-100 transition-opacity pl-2">
+          <button onClick={copyToClipboard} className="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-indigo-500">Copy</button>
+          <button onClick={() => handleFeedback('like')} className={`p-1 rounded-lg ${message.feedback === 'like' ? 'text-emerald-500' : 'text-slate-300'}`}>
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14 10h4.708C19.723 10 20.5 10.741 20.5 11.64c0 .351-.11.68-.316.963l-2.617 3.663c-.347.487-.903.774-1.498.774H8.5V10h4.04l.972-3.89a2 2 0 00-1.942-2.484H10l-1.5 1.5V10" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M7 10H4a1 1 0 00-1 1v7a1 1 0 001 1h3V10z" /></svg>
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col mb-16 px-2 md:px-0 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="notebook-paper handwritten px-4 md:px-0 rounded-[12px] shadow-2xl relative overflow-hidden border border-slate-200/50">
         {/* Eraser Marks / Smudges Background Effect */}
-        <div className="absolute inset-0 pointer-events-none opacity-20" style={{ 
-          backgroundImage: 'radial-gradient(circle at 20% 30%, #ffffff 0%, transparent 40%), radial-gradient(circle at 80% 70%, #ffffff 0%, transparent 30%)' 
+        <div className="absolute inset-0 pointer-events-none opacity-20" style={{
+          backgroundImage: 'radial-gradient(circle at 20% 30%, #ffffff 0%, transparent 40%), radial-gradient(circle at 80% 70%, #ffffff 0%, transparent 30%)'
         }}></div>
 
         {/* Header - Aligned to grid height (2.2rem) */}
         <div className="relative mb-8 pl-[90px] pr-8 border-b-2 border-[#0047ab]/30 pb-2" style={{ minHeight: '4.4rem' }}>
-           <h2 className="text-xl md:text-2xl font-bold tracking-tight mb-1">{getDynamicTitle(message.text)}</h2>
-           <div className="flex items-center justify-between text-[10px] font-bold opacity-70">
-              <span>{getDynamicDateLabel(message.text)}: {new Date().toLocaleDateString()}</span>
-              <div className="flex space-x-2">
-                 <span>⭐</span><span>📚</span>
-              </div>
-           </div>
+          <h2 className="text-xl md:text-2xl font-bold tracking-tight mb-1">{getDynamicTitle(message.text)}</h2>
+          <div className="flex items-center justify-between text-[10px] font-bold opacity-70">
+            <span>{getDynamicDateLabel(message.text)}: {new Date().toLocaleDateString()}</span>
+            <div className="flex space-x-2">
+              <span>⭐</span><span>📚</span>
+            </div>
+          </div>
         </div>
 
         {/* Content Body - Using notebook-content for grid lock */}
         <div className="notebook-content max-w-none relative pl-[90px] pr-8 handwritten text-[#0047ab]">
-          <ReactMarkdown 
-            remarkPlugins={[remarkMath]} 
+          <ReactMarkdown
+            remarkPlugins={[remarkMath]}
             rehypePlugins={[rehypeKatex]}
             components={{
-              h1: ({children}) => (
+              h1: ({ children }) => (
                 <div className="relative">
                   <span className="absolute left-[-80px] top-0 text-xl">{getSubjectIcon(String(children))}</span>
                   <h3 className="text-lg md:text-xl underline decoration-wavy decoration-[#0047ab]/40 flex items-center gap-2">{children}</h3>
                 </div>
               ),
-              h2: ({children}) => (
+              h2: ({ children }) => (
                 <div className="relative">
                   <span className="absolute left-[-80px] top-0 text-xl">{getSubjectIcon(String(children))}</span>
                   <h3 className="text-lg md:text-xl underline decoration-wavy decoration-[#0047ab]/40 flex items-center gap-2">{children}</h3>
                 </div>
               ),
-              strong: ({node, ...props}) => {
+              strong: ({ node, ...props }) => {
                 const content = String(props.children);
-                
+
                 // Boxed Answer Handling
                 if (content.toLowerCase().includes('final answer') || content.toLowerCase().includes('જવાબ') || content.toLowerCase().includes('अंतिम उत्तर')) {
                   return (
@@ -153,9 +205,9 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, chatId, isChannel })
                 if (isSectionHeader) {
                   return (
                     <div className="relative h-0">
-                       <span className="absolute left-[-85px] top-0 w-[70px] text-right text-[9px] font-bold uppercase leading-tight pr-2 opacity-80">
-                          {content}
-                       </span>
+                      <span className="absolute left-[-85px] top-0 w-[70px] text-right text-[9px] font-bold uppercase leading-tight pr-2 opacity-80">
+                        {content}
+                      </span>
                     </div>
                   );
                 }
@@ -163,9 +215,9 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, chatId, isChannel })
                 return <strong {...props} />
               },
               hr: () => <div className="h-px w-full border-t border-dashed border-[#0047ab]/20 my-4" />,
-              p: ({children}) => <p>{children}</p>,
-              ul: ({children}) => <ul className="list-disc pl-5">{children}</ul>,
-              li: ({children}) => <li>{children}</li>
+              p: ({ children }) => <p>{children}</p>,
+              ul: ({ children }) => <ul className="list-disc pl-5">{children}</ul>,
+              li: ({ children }) => <li>{children}</li>
             }}
           >
             {message.text}
@@ -175,32 +227,32 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, chatId, isChannel })
         {/* Verified Grounding Sources */}
         {message.sources && message.sources.length > 0 && (
           <div className="mt-8 pl-[90px] pr-8 border-t border-dashed border-[#0047ab]/20 pt-4 pb-4">
-             <h4 className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-3">Verified Academic Sources</h4>
-             <div className="flex flex-wrap gap-2">
-                {message.sources.map((source, sIdx) => {
-                  if (source.web) {
-                    return (
-                      <a 
-                        key={sIdx} 
-                        href={source.web.uri} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center space-x-1.5 px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-[10px] font-bold border border-indigo-100 hover:bg-indigo-100 transition-colors"
-                      >
-                        <span>{source.web.title || 'Source'}</span>
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                      </a>
-                    );
-                  }
-                  return null;
-                })}
-             </div>
+            <h4 className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-3">Verified Academic Sources</h4>
+            <div className="flex flex-wrap gap-2">
+              {message.sources.map((source, sIdx) => {
+                if (source.web) {
+                  return (
+                    <a
+                      key={sIdx}
+                      href={source.web.uri}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center space-x-1.5 px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-[10px] font-bold border border-indigo-100 hover:bg-indigo-100 transition-colors"
+                    >
+                      <span>{source.web.title || 'Source'}</span>
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                    </a>
+                  );
+                }
+                return null;
+              })}
+            </div>
           </div>
         )}
 
         {/* Footer */}
         <div className="mt-4 pt-2 pl-[90px] pr-8 border-t-2 border-[#0047ab]/30 text-center pb-4">
-           <p className="text-sm md:text-lg font-bold">{getDynamicTip(message.text)}</p>
+          <p className="text-sm md:text-lg font-bold">{getDynamicTip(message.text)}</p>
         </div>
       </div>
 

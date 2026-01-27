@@ -169,7 +169,8 @@ export const AIAssistantService = {
                     action: 'getTutoringResponse',
                     payload: { systemInstruction, history, message, docText }
                 });
-                return (result.data as any).text || "";
+                const data = result.data as any;
+                return { text: data.text || "", metadata: data.metadata };
             } catch (error: any) {
                 lastError = error;
                 // If it's a 429 and we have retries left, wait a bit
@@ -185,9 +186,9 @@ export const AIAssistantService = {
 
         console.error("Error in getTutoringResponse:", lastError);
         if (lastError?.message?.includes('429')) {
-            return "I'm a bit overwhelmed with requests right now. 😅 Please wait about 10-20 seconds and try again, I'll be ready to help you then!";
+            return { text: "I'm a bit overwhelmed with requests right now. 😅 Please wait about 10-20 seconds and try again, I'll be ready to help you then!", metadata: { complexity: 'EASY' } };
         }
-        return "Sorry, I am having trouble connecting to my assistant tools. Please try again in a moment.";
+        return { text: "Sorry, I am having trouble connecting to my assistant tools. Please try again in a moment.", metadata: { complexity: 'EASY' } };
     },
 
     /**

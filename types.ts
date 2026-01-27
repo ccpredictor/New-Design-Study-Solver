@@ -20,6 +20,7 @@ export interface Message {
   senderName?: string;
   tokensUsed?: number;
   sources?: any[];
+  metadata?: any;
 }
 
 export interface ChatState {

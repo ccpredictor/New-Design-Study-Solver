@@ -448,13 +448,18 @@ const StudySolverScreen: React.FC = () => {
         let result;
         if (studentProfile && !activeChannelId) {
           // Use Teacher Assistant Logic (Profile-aware)
-          const aiResponse = await AIAssistantService.getTutoringResponse(
+          const tutoringResult = await AIAssistantService.getTutoringResponse(
             user.uid,
             currentInput,
             historyForModel,
             currentDoc?.text
           );
-          result = { text: aiResponse, tokensUsed: 0, sources: [], metadata: { modelUsed: 'gemini-2.0-flash', routerTriggered: false } };
+          result = {
+            text: tutoringResult.text,
+            tokensUsed: 0,
+            sources: [],
+            metadata: tutoringResult.metadata || { modelUsed: 'gemini-2.0-flash' }
+          };
         } else {
           result = await solveProblem(currentInput, historyForModel, currentImg || undefined, userGrade);
         }
@@ -484,6 +489,7 @@ const StudySolverScreen: React.FC = () => {
         timestamp: serverTimestamp(),
         tokensUsed: tokensUsed,
         sources: sources,
+        metadata: modelMetadata,
         modelUsed: modelMetadata.modelUsed || 'unknown',
         routerTriggered: modelMetadata.routerTriggered || false
       });

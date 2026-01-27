@@ -251,7 +251,25 @@ export const callGemini = onCall({ cors: true }, async (request) => {
         } else if (action === "getTutoringResponse") {
             const { systemInstruction, history, message, docText } = payload;
 
-            // Map history correctly, excluding any previous system instruction hacks
+            // 1. Classify Complexity
+            let complexity: 'EASY' | 'HARD' = 'EASY';
+            try {
+                const classificationResponse = await callWithRetry(() => ai.models.generateContent({
+                    model: 'gemini-2.0-flash',
+                    contents: message,
+                    config: {
+                        systemInstruction: ROUTER_INSTRUCTION,
+                        temperature: 0.1,
+                    }
+                }));
+                const classification = classificationResponse.text?.trim().toUpperCase();
+                complexity = classification === 'HARD' ? 'HARD' : 'EASY';
+            } catch (e) {
+                console.error("Tutoring Router error", e);
+                complexity = 'HARD';
+            }
+
+            // Map history correctly
             const contents: any[] = (history || []).slice(-15).map((m: any) => ({
                 role: m.role === 'user' ? 'user' : 'model',
                 parts: [{ text: m.text }]
@@ -268,10 +286,14 @@ export const callGemini = onCall({ cors: true }, async (request) => {
                 contents: contents,
                 config: {
                     systemInstruction: systemInstruction,
-                    temperature: 0.7
+                    temperature: complexity === 'HARD' ? 0.7 : 0.4
                 }
             }));
-            return { text: response.text || "Sorry, I couldn't generate a response." };
+
+            return {
+                text: response.text || "Sorry, I couldn't generate a response.",
+                metadata: { complexity }
+            };
 
         } else if (action === "updateProfile") {
             const { promptTemplate } = payload;
