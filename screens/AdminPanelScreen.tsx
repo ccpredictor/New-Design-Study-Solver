@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { collection, onSnapshot, doc, updateDoc, deleteDoc, query, orderBy, setDoc } from 'firebase/firestore';
+import { collection, onSnapshot, doc, updateDoc, deleteDoc, query, orderBy, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { UserRole, ContactInquiry } from '../types';
 
-type SubTab = 'dashboard' | 'users' | 'ai-analytics' | 'inquiries' | 'settings' | 'finances';
+type SubTab = 'dashboard' | 'users' | 'ai-analytics' | 'inquiries' | 'settings' | 'finances' | 'invites';
 
 const AdminPanelScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [activeTab, setActiveTab] = useState<SubTab>('dashboard');
@@ -157,6 +157,7 @@ const AdminPanelScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           <NavItem active={activeTab === 'finances'} label="Revenue & Cost" onClick={() => setActiveTab('finances')} />
           <NavItem active={activeTab === 'ai-analytics'} label="AI Performance" onClick={() => setActiveTab('ai-analytics')} />
           <NavItem active={activeTab === 'inquiries'} label="Inquiries" onClick={() => setActiveTab('inquiries')} />
+          <NavItem active={activeTab === 'invites'} label="Test Invites" onClick={() => setActiveTab('invites')} />
           <NavItem active={activeTab === 'settings'} label="Control Panel" onClick={() => setActiveTab('settings')} />
         </div>
 
@@ -244,6 +245,64 @@ const AdminPanelScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                   </div>
                 ))}
                 {inquiries.length === 0 && <p className="text-center py-20 text-slate-400 font-bold uppercase tracking-widest">No pending inquiries</p>}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'invites' && (
+            <div className="space-y-8 animate-in fade-in duration-500">
+              <div className="bg-white dark:bg-charcoal-800 p-8 rounded-[40px] border border-slate-100 dark:border-white/5">
+                <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6">Generate New Test Link</h3>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                  <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Test Email</label>
+                    <input id="inv-email" type="email" placeholder="tester@test.com" className="w-full bg-slate-50 dark:bg-charcoal-900 border border-slate-100 dark:border-white/5 rounded-2xl px-4 py-3 text-xs font-bold dark:text-white outline-none" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Test Password</label>
+                    <input id="inv-pass" type="text" placeholder="pass123" className="w-full bg-slate-50 dark:bg-charcoal-900 border border-slate-100 dark:border-white/5 rounded-2xl px-4 py-3 text-xs font-bold dark:text-white outline-none" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Duration</label>
+                    <select id="inv-dur" className="w-full bg-slate-50 dark:bg-charcoal-900 border border-slate-100 dark:border-white/5 rounded-2xl px-4 py-3 text-[10px] font-black uppercase text-slate-400 outline-none">
+                      <option value="1h">1 Hour</option>
+                      <option value="2h">2 Hours</option>
+                      <option value="1d">1 Day</option>
+                      <option value="2d">2 Days</option>
+                    </select>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      const email = (document.getElementById('inv-email') as HTMLInputElement).value;
+                      const password = (document.getElementById('inv-pass') as HTMLInputElement).value;
+                      const duration = (document.getElementById('inv-dur') as HTMLSelectElement).value;
+                      if (!email || !password) return alert("Fill all fields");
+
+                      const now = new Date();
+                      let expiresAt = new Date();
+                      if (duration === '1h') expiresAt.setHours(now.getHours() + 1);
+                      else if (duration === '2h') expiresAt.setHours(now.getHours() + 2);
+                      else if (duration === '1d') expiresAt.setDate(now.getDate() + 1);
+                      else if (duration === '2d') expiresAt.setDate(now.getDate() + 2);
+
+                      const token = Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+                      await setDoc(doc(collection(db, 'test_invites')), {
+                        email, password, expiresAt: expiresAt.toISOString(), token, status: 'active', createdAt: serverTimestamp()
+                      });
+                      alert("Link Generated!");
+                    }}
+                    className="py-3.5 bg-indigo-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-indigo-500/20"
+                  >
+                    Generate Link
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest">Active Test Links</h3>
+                <div className="grid grid-cols-1 gap-4">
+                  <InviteList />
+                </div>
               </div>
             </div>
           )}
@@ -417,5 +476,55 @@ const ToggleSetting: React.FC<{ label: string, active: boolean, desc: string }> 
     </div>
   </div>
 );
+
+const InviteList: React.FC = () => {
+  const [invites, setInvites] = useState<any[]>([]);
+
+  useEffect(() => {
+    const q = query(collection(db, 'test_invites'), orderBy('createdAt', 'desc'));
+    return onSnapshot(q, (snap) => {
+      setInvites(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+  }, []);
+
+  const copyToClipboard = (token: string) => {
+    const link = `${window.location.origin}/?invite=${token}`;
+    navigator.clipboard.writeText(link);
+    alert("Link copied to clipboard!");
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure?")) return;
+    await deleteDoc(doc(db, 'test_invites', id));
+  };
+
+  return (
+    <div className="space-y-4">
+      {invites.map(inv => (
+        <div key={inv.id} className="bg-white dark:bg-charcoal-800 p-6 rounded-[32px] border border-slate-100 dark:border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-start space-x-4">
+            <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-500/10 flex items-center justify-center text-lg">⏳</div>
+            <div>
+              <div className="flex items-center space-x-2">
+                <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase">{inv.email}</h4>
+                <span className={`px-2 py-0.5 text-[8px] font-black rounded-lg uppercase tracking-widest ${new Date(inv.expiresAt) > new Date() ? 'bg-emerald-50 text-emerald-500' : 'bg-rose-50 text-rose-500'}`}>
+                  {new Date(inv.expiresAt) > new Date() ? 'Active' : 'Expired'}
+                </span>
+              </div>
+              <p className="text-[10px] text-slate-400 font-bold uppercase">Pass: {inv.password} | Expires: {new Date(inv.expiresAt).toLocaleString()}</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2">
+            <button onClick={() => copyToClipboard(inv.token)} className="px-4 py-2 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-500 text-[10px] font-black rounded-xl uppercase tracking-widest hover:bg-indigo-500 hover:text-white transition-all">Copy Link</button>
+            <button onClick={() => handleDelete(inv.id!)} className="p-2 bg-rose-50 dark:bg-rose-500/10 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+            </button>
+          </div>
+        </div>
+      ))}
+      {invites.length === 0 && <p className="text-center py-10 text-slate-400 font-bold uppercase tracking-widest text-xs">No active test links found</p>}
+    </div>
+  );
+};
 
 export default AdminPanelScreen;

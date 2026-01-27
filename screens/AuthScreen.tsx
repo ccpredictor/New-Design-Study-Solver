@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
+import {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
   signInWithPopup,
   updateProfile
 } from "firebase/auth";
@@ -17,26 +17,68 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onBackToLanding }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  const [grade, setGrade] = useState('Class 10'); 
+  const [grade, setGrade] = useState('Class 10');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Dynamic Metadata for Auth
+  // Dynamic Metadata and Invite Handler
   useEffect(() => {
     const title = isLogin ? 'Sign In | AI Study Solver' : 'Create Account | AI Study Solver';
     const desc = isLogin ? 'Welcome back! Sign in to continue your academic mastery journey.' : 'Join the elite academic community and start solving problems with AI.';
-    
+
     document.title = title;
     const descTag = document.querySelector('meta[name="description"]');
     if (descTag) descTag.setAttribute('content', desc);
-    
-    const keywordsTag = document.querySelector('meta[name="keywords"]');
-    if (keywordsTag) keywordsTag.setAttribute('content', 'sign in, register student, join ai tutor');
+
+    // Check for Invite Token
+    const params = new URLSearchParams(window.location.search);
+    const inviteToken = params.get('invite');
+
+    if (inviteToken && !loading) {
+      handleInvite(inviteToken);
+    }
   }, [isLogin]);
 
+  const handleInvite = async (token: string) => {
+    setLoading(true);
+    setError("Validating Secure Invite...");
+    try {
+      const { collection, query, where, getDocs } = await import('firebase/firestore');
+      const q = query(collection(db, 'test_invites'), where('token', '==', token));
+      const snap = await getDocs(q);
+
+      if (snap.empty) throw new Error("Invalid or broken invite link.");
+
+      const inv = snap.docs[0].data();
+      if (new Date(inv.expiresAt) < new Date()) throw new Error("This invite link has expired.");
+
+      // Attempt Auto-Login
+      try {
+        const userCredential = await signInWithEmailAndPassword(auth, inv.email, inv.password);
+        await saveUserToFirestore(userCredential.user, 'Guest Tester');
+      } catch (err: any) {
+        if (err.code === 'auth/user-not-found') {
+          // If user doesn't exist, create it auto
+          const userCredential = await createUserWithEmailAndPassword(auth, inv.email, inv.password);
+          await updateProfile(userCredential.user, { displayName: 'Guest Tester' });
+          await saveUserToFirestore(userCredential.user, 'Guest Tester', 'Class 10');
+        } else {
+          throw err;
+        }
+      }
+
+      // Remove token from URL after success
+      window.history.replaceState({}, document.title, "/");
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const gradeOptions = [
-    "Class 1", "Class 2", "Class 3", "Class 4", "Class 5", 
-    "Class 6", "Class 7", "Class 8", "Class 9", "Class 10", 
+    "Class 1", "Class 2", "Class 3", "Class 4", "Class 5",
+    "Class 6", "Class 7", "Class 8", "Class 9", "Class 10",
     "Class 11", "Class 12", "Undergraduate", "Postgraduate", "PhD"
   ];
 
@@ -49,7 +91,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onBackToLanding }) => {
         uid: user.uid,
         displayName: displayName || user.displayName || 'Student',
         email: user.email,
-        grade: userGrade || 'Class 10', 
+        grade: userGrade || 'Class 10',
         createdAt: serverTimestamp(),
         lastLogin: serverTimestamp(),
         role: 'student',
@@ -106,7 +148,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onBackToLanding }) => {
   return (
     <div className="min-h-screen bg-[#f8fafc] dark:bg-charcoal-950 flex flex-col justify-center px-4 md:px-6 py-4 md:py-12 overflow-y-auto custom-scrollbar transition-colors">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <button 
+        <button
           onClick={onBackToLanding}
           className="flex items-center space-x-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest hover:text-indigo-500 transition-colors mb-8 mx-auto"
         >
