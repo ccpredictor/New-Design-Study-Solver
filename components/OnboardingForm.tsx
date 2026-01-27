@@ -21,13 +21,12 @@ const TRANSLATIONS = {
         q1: "૧. તમારું પૂરું નામ શું છે?",
         q2: "૨. તમે કયા ધોરણમાં ભણો છો?",
         q3: "૩. તમે કેવી રીતે ભણવાનું વધારે પસંદ કરો છો? (લર્નિંગ સ્ટાઇલ)",
-        q4: "૪. તમે કઈ ભાષામાં વાત કરવા માંગો છો?",
-        q5: "૫. તમારે આસિસ્ટન્ટનો સ્વભાવ કેવો જોઈએ છે?",
-        q6: "૬. ભણતી વખતે કઈ મુશ્કેલી વધારે આવે છે?",
-        q7: "૭. જો કોઈ ટોપિકમાં અટકો, તો તમે શું કરો છો?",
-        q8: "૮. તમને સૌથી વધારે મદદ શેનાથી મળે છે?",
-        q9: "૯. મારી પાસે તમે કઈ મુખ્ય મદદ ઈચ્છો છો?",
-        q10: "૧૦. તમને ભણવામાં સૌથી વધારે ક્યાં અટક આવે છે?",
+        q5: "૪. તમારે આસિસ્ટન્ટનો સ્વભાવ કેવો જોઈએ છે?",
+        q6: "૫. ભણતી વખતે કઈ મુશ્કેલી વધારે આવે છે?",
+        q7: "૬. જો કોઈ ટોપિકમાં અટકો, તો તમે શું કરો છું?",
+        q8: "૭. તમને સૌથી વધારે મદદ શેનાથી મળે છે?",
+        q9: "૮. મારી પાસે તમે કઈ મુખ્ય મદદ ઈચ્છો છો?",
+        q10: "૯. તમને ભણવામાં સૌથી વધારે ક્યાં અટક આવે છે?",
         placeholders: {
             name: "તમારું નામ લખો...",
             type: "અહીં લખો..."
@@ -47,13 +46,12 @@ const TRANSLATIONS = {
         q1: "1. आपका पूरा नाम क्या है?",
         q2: "2. आप कौन सी कक्षा में पढ़ते हैं?",
         q3: "3. आप कैसे पढ़ना पसंद करते हैं? (लर्निंग स्टाइल)",
-        q4: "4. आप किस भाषा में बात करना चाहते हैं?",
-        q5: "5. असिस्टेंट का स्वभाव कैसा होना चाहिए?",
-        q6: "6. पढ़ते समय क्या समस्या आती है?",
-        q7: "7. यदि आप अटक जाते हैं, तो क्या करते हैं?",
-        q8: "8. आपको सबसे ज्यादा मदद किससे मिलती है?",
-        q9: "9. आप मुझसे क्या मदद चाहते हैं?",
-        q10: "10. आपको पढ़ाई में सबसे ज्यादा कहाँ रुकावट आती है?",
+        q5: "4. असिस्टेंट का स्वभाव कैसा होना चाहिए?",
+        q6: "5. पढ़ते समय क्या समस्या आती है?",
+        q7: "6. यदि आप अटक जाते हैं, तो क्या करते हैं?",
+        q8: "7. आपको सबसे ज्यादा मदद किससे मिलती है?",
+        q9: "8. आप मुझसे क्या मदद चाहते हैं?",
+        q10: "9. आपको पढ़ाई में सबसे ज्यादा कहाँ रुकावट आती है?",
         placeholders: {
             name: "अपना नाम लिखें...",
             type: "यहाँ लिखें..."
@@ -73,13 +71,12 @@ const TRANSLATIONS = {
         q1: "1. What is your full name?",
         q2: "2. Which grade are you in?",
         q3: "3. How do you like to learn new topics?",
-        q4: "4. Which language do you prefer?",
-        q5: "5. What should my assistant tone be?",
-        q6: "6. What is your main study difficulty?",
-        q7: "7. What do you do when you're stuck?",
-        q8: "8. What helps you the most while studying?",
-        q9: "9. Primary help you expect from me?",
-        q10: "10. Where do you get stuck the most?",
+        q5: "4. What should my assistant tone be?",
+        q6: "5. What is your main study difficulty?",
+        q7: "6. What do you do when you're stuck?",
+        q8: "7. What helps you the most while studying?",
+        q9: "8. Primary help you expect from me?",
+        q10: "9. Where do you get stuck the most?",
         placeholders: {
             name: "Enter your name...",
             type: "Type here..."
@@ -190,7 +187,12 @@ const OnboardingForm: React.FC<OnboardingFormProps> = ({ uid, onComplete }) => {
         addUserMessage(label);
 
         // Update AI Response first
-        const nextStep = currentStep + 1;
+        let nextStep = currentStep + 1;
+
+        // Skip Step 4 as it's now handled at the very beginning
+        if (nextStep === 4) {
+            nextStep = 5;
+        }
 
         setTimeout(() => {
             if (nextStep <= 10) {
@@ -210,14 +212,14 @@ const OnboardingForm: React.FC<OnboardingFormProps> = ({ uid, onComplete }) => {
             const answers = [
                 { q: "1. Name", a: data.name },
                 { q: "2. Grade", a: data.grade },
-                { q: "3. Styles", a: data.styles.join(", ") },
-                { q: "4. Lang", a: data.language },
-                { q: "5. Tone", a: data.tone },
-                { q: "6. Diffs", a: data.difficulties.join(", ") },
-                { q: "7. Stuck", a: data.stuckStrategy },
-                { q: "8. Format", a: data.helpfulFormat },
-                { q: "9. Goal", a: data.aiGoal },
-                { q: "10. Obstacles", a: data.obstacles.join(", ") }
+                { q: "3. Learning Style", a: data.styles.join(", ") },
+                { q: "4. Preferred Language", a: data.language },
+                { q: "5. Persona/Tone", a: data.tone },
+                { q: "6. Difficulties", a: data.difficulties.join(", ") },
+                { q: "7. Stuck Strategy", a: data.stuckStrategy },
+                { q: "8. Best Help Format", a: data.helpfulFormat },
+                { q: "9. Primary Goal", a: data.aiGoal },
+                { q: "10. Main Obstacles", a: data.obstacles.join(", ") }
             ];
             const profile = await AIAssistantService.completeOnboarding(uid, answers, { name: data.name, grade: data.grade });
             onComplete(profile);
