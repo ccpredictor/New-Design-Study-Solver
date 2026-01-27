@@ -160,16 +160,34 @@ export const AIAssistantService = {
         const summary = "";
         const systemInstruction = TUTOR_SYSTEM_PROMPT(profile, summary);
 
-        try {
-            const result = await callGeminiFunction({
-                action: 'getTutoringResponse',
-                payload: { systemInstruction, history, message, docText }
-            });
-            return (result.data as any).text || "";
-        } catch (error) {
-            console.error("Error in getTutoringResponse:", error);
-            return "Sorry, I am having trouble connecting to my assistant tools.";
+        let lastError: any;
+        const maxRetries = 2;
+
+        for (let i = 0; i <= maxRetries; i++) {
+            try {
+                const result = await callGeminiFunction({
+                    action: 'getTutoringResponse',
+                    payload: { systemInstruction, history, message, docText }
+                });
+                return (result.data as any).text || "";
+            } catch (error: any) {
+                lastError = error;
+                // If it's a 429 and we have retries left, wait a bit
+                if (error.message?.includes('429') && i < maxRetries) {
+                    const delay = 2000 * (i + 1);
+                    console.warn(`Client-side retry ${i + 1}/${maxRetries} after 429...`);
+                    await new Promise(r => setTimeout(r, delay));
+                    continue;
+                }
+                break;
+            }
         }
+
+        console.error("Error in getTutoringResponse:", lastError);
+        if (lastError?.message?.includes('429')) {
+            return "I'm a bit overwhelmed with requests right now. 😅 Please wait about 10-20 seconds and try again, I'll be ready to help you then!";
+        }
+        return "Sorry, I am having trouble connecting to my assistant tools. Please try again in a moment.";
     },
 
     /**

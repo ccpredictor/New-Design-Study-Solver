@@ -20,6 +20,32 @@ const functions = getFunctions(app);
 // Use 'callGemini' as the function name
 const callGeminiFunction = httpsCallable(functions, 'callGemini');
 
+const callWithRetry = async (payload: any, maxRetries = 2) => {
+  let lastError: any;
+  for (let i = 0; i <= maxRetries; i++) {
+    try {
+      return await callGeminiFunction(payload);
+    } catch (error: any) {
+      lastError = error;
+      if (error.message?.includes('429') && i < maxRetries) {
+        const delay = 2000 * (i + 1);
+        console.warn(`geminiService retry ${i + 1}/${maxRetries} after 429...`);
+        await new Promise(r => setTimeout(r, delay));
+        continue;
+      }
+      break;
+    }
+  }
+  throw lastError;
+};
+
+const handle429 = (error: any, fallback: string) => {
+  if (error?.message?.includes('429')) {
+    return "I'm a bit overwhelmed right now. 😅 Please wait about 10-20 seconds and try again, I'll be ready for you then!";
+  }
+  return fallback;
+};
+
 export const solveProblem = async (
   prompt: string,
   history: Message[],
@@ -27,12 +53,11 @@ export const solveProblem = async (
   grade?: string
 ): Promise<{ text: string, sources?: any[], tokensUsed: number, metadata?: any }> => {
   try {
-    const result = await callGeminiFunction({
+    const result = await callWithRetry({
       action: 'solveProblem',
       payload: { prompt, history, image, grade }
     });
 
-    // cast result.data to expected type
     const data = result.data as any;
     return {
       text: data.text,
@@ -43,7 +68,7 @@ export const solveProblem = async (
   } catch (error) {
     console.error("Error calling Gemini Cloud Function:", error);
     return {
-      text: "Sorry, I encountered an error connecting to the server.",
+      text: handle429(error, "Sorry, I encountered an error connecting to the server. Please try again in a moment."),
       tokensUsed: 0,
       sources: []
     }
@@ -52,14 +77,14 @@ export const solveProblem = async (
 
 export const generateGlobalReport = async (data: string): Promise<string> => {
   try {
-    const result = await callGeminiFunction({
+    const result = await callWithRetry({
       action: 'generateGlobalReport',
       payload: { data }
     });
     return (result.data as any).text;
   } catch (error) {
     console.error("Error generating report:", error);
-    return "Report failed.";
+    return handle429(error, "Report failed.");
   }
 };
 
@@ -74,14 +99,14 @@ export const generateExamPaper = async (params: {
   mimeType?: string
 }): Promise<string> => {
   try {
-    const result = await callGeminiFunction({
+    const result = await callWithRetry({
       action: 'generateExamPaper',
       payload: params
     });
     return (result.data as any).text;
   } catch (error) {
     console.error("Error generating exam paper:", error);
-    return "Failed to generate exam paper.";
+    return handle429(error, "Failed to generate exam paper.");
   }
 };
 
@@ -92,27 +117,27 @@ export const generateStudyPlanner = async (params: {
   dailyHours: string
 }): Promise<string> => {
   try {
-    const result = await callGeminiFunction({
+    const result = await callWithRetry({
       action: 'generateStudyPlanner',
       payload: params
     });
     return (result.data as any).text;
   } catch (error) {
     console.error("Error generating study planner:", error);
-    return "Failed to generate study planner.";
+    return handle429(error, "Failed to generate study planner.");
   }
 };
 
 export const analyzeLearningInsights = async (history: string): Promise<string> => {
   try {
-    const result = await callGeminiFunction({
+    const result = await callWithRetry({
       action: 'analyzeLearningInsights',
       payload: { history }
     });
     return (result.data as any).text;
   } catch (error) {
     console.error("Error analyzing insights:", error);
-    return "Not enough data or server error.";
+    return handle429(error, "Not enough data or server error.");
   }
 };
 

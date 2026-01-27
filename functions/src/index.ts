@@ -59,6 +59,29 @@ You are a routing agent. Categorize the user input:
 ONLY output 'EASY' or 'HARD'.
 `;
 
+/**
+ * Helper for exponential backoff retries on 429
+ */
+async function callWithRetry(fn: () => Promise<any>, maxRetries = 3, initialDelay = 1000) {
+    let lastError;
+    for (let i = 0; i < maxRetries; i++) {
+        try {
+            return await fn();
+        } catch (error: any) {
+            lastError = error;
+            // 429 is Resource Exhausted / Rate Limit
+            if (error.message?.includes('429') || error.status === 429 || error.code === 429) {
+                const delay = initialDelay * Math.pow(2, i);
+                console.warn(`Gemini 429 detected. Retrying in ${delay}ms... (Attempt ${i + 1}/${maxRetries})`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+                continue;
+            }
+            throw error;
+        }
+    }
+    throw lastError;
+}
+
 export const callGemini = onCall({ cors: true }, async (request) => {
     // 1. Authentication Check (Optional - highly recommended for production)
     // if (!request.auth) {
@@ -85,14 +108,14 @@ export const callGemini = onCall({ cors: true }, async (request) => {
             if (!image) {
                 routerTriggered = true;
                 try {
-                    const response = await ai.models.generateContent({
+                    const response = await callWithRetry(() => ai.models.generateContent({
                         model: 'gemini-2.0-flash',
                         contents: prompt,
                         config: {
                             systemInstruction: ROUTER_INSTRUCTION,
                             temperature: 0.1,
                         }
-                    });
+                    }));
                     const classification = response.text?.trim().toUpperCase();
                     complexity = classification === 'HARD' ? 'HARD' : 'EASY';
                 } catch (e) {
@@ -132,7 +155,7 @@ export const callGemini = onCall({ cors: true }, async (request) => {
                 parts: userParts
             });
 
-            const response = await ai.models.generateContent({
+            const response = await callWithRetry(() => ai.models.generateContent({
                 model: selectedModel,
                 contents: contents,
                 config: {
@@ -140,7 +163,7 @@ export const callGemini = onCall({ cors: true }, async (request) => {
                     temperature: complexity === 'HARD' ? 0.7 : 0.4,
                     // tools: [{ googleSearch: {} }] // Note: googleSearch might require special handling or specific models
                 }
-            });
+            }));
 
             const sources = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
             const usage = (response as any).usageMetadata || {};
@@ -159,10 +182,10 @@ export const callGemini = onCall({ cors: true }, async (request) => {
         } else if (action === "generateGlobalReport") {
             const { data } = payload;
             const prompt = `As a Senior Administrator, analyze this data and generate a report in Markdown:\n${data}`;
-            const response = await ai.models.generateContent({
+            const response = await callWithRetry(() => ai.models.generateContent({
                 model: 'gemini-2.0-flash',
                 contents: prompt,
-            });
+            }));
             return { text: response.text || "Report failed." };
 
         } else if (action === "generateExamPaper") {
@@ -180,23 +203,23 @@ export const callGemini = onCall({ cors: true }, async (request) => {
                 });
             }
 
-            const response = await ai.models.generateContent({
+            const response = await callWithRetry(() => ai.models.generateContent({
                 model: 'gemini-2.0-flash',
                 contents: { parts: userParts },
                 // Note: Thinking config might need specific models or beta flags
                 config: {
                     maxOutputTokens: 4000,
                 }
-            });
+            }));
             return { text: response.text || "Failed." };
 
         } else if (action === "generateStudyPlanner") {
             const { examDate, subjects, targetGrade, dailyHours } = payload;
             const prompt = `Plan study roadmap. Exam: ${examDate}, Subjects: ${subjects}, Target: ${targetGrade}, Hours: ${dailyHours}.`;
-            const response = await ai.models.generateContent({
+            const response = await callWithRetry(() => ai.models.generateContent({
                 model: 'gemini-2.0-flash',
                 contents: prompt
-            });
+            }));
             return { text: response.text || "Failed." };
 
         } else if (action === "analyzeLearningInsights") {
@@ -210,19 +233,19 @@ export const callGemini = onCall({ cors: true }, async (request) => {
             - Language: Mixed Hindi-English (Hinglish).
             - Keep sentences short.`;
 
-            const response = await ai.models.generateContent({
+            const response = await callWithRetry(() => ai.models.generateContent({
                 model: 'gemini-2.0-flash',
                 contents: prompt,
-            });
+            }));
             return { text: response.text || "Not enough data." };
 
         } else if (action === "completeOnboarding") {
             const { answers, promptTemplate } = payload;
-            const response = await ai.models.generateContent({
+            const response = await callWithRetry(() => ai.models.generateContent({
                 model: "gemini-2.0-flash",
                 contents: [{ role: 'user', parts: [{ text: `${promptTemplate}\n\nSTUDENT RESPONSES:\n${JSON.stringify(answers)}` }] }],
                 config: { responseMimeType: "application/json" }
-            });
+            }));
             return { text: response.text || "{}" };
 
         } else if (action === "getTutoringResponse") {
@@ -240,23 +263,23 @@ export const callGemini = onCall({ cors: true }, async (request) => {
                 parts: [{ text: `${message}${docText ? `\n\nExtracted Doc Text:\n${docText}` : ""}` }]
             });
 
-            const response = await ai.models.generateContent({
+            const response = await callWithRetry(() => ai.models.generateContent({
                 model: "gemini-2.0-flash",
                 contents: contents,
                 config: {
                     systemInstruction: systemInstruction,
                     temperature: 0.7
                 }
-            });
+            }));
             return { text: response.text || "Sorry, I couldn't generate a response." };
 
         } else if (action === "updateProfile") {
             const { promptTemplate } = payload;
-            const response = await ai.models.generateContent({
+            const response = await callWithRetry(() => ai.models.generateContent({
                 model: "gemini-2.0-flash",
                 contents: [{ role: 'user', parts: [{ text: promptTemplate }] }],
                 config: { responseMimeType: "application/json" }
-            });
+            }));
             return { text: response.text || "{}" };
         }
 
